@@ -5,8 +5,8 @@ type: software
 authors:
   - family-names: Ochs
     given-names: Steven
-  - name: The Book of Houses
+  - name: Tollbench
 repository-code: https://github.com/tollbench/passport
 url: https://github.com/tollbench/passport
 license: Apache-2.0
-version: 0.1.0a2
+version: 0.1.0a3

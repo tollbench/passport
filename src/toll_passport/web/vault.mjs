@@ -1,4 +1,4 @@
-// Copyright 2026 Steven Ochs and The Book of Houses.
+// Copyright 2026 Steven Ochs and Tollbench.
 // SPDX-License-Identifier: Apache-2.0
 // Local-only reference implementation. No network calls or key persistence.
 

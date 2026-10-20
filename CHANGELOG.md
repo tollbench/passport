@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0a3
+
+Correct Passport attribution to Steven Ochs and Tollbench in package metadata, citation, notices and the UI. Runtime behavior is unchanged. Earlier released artifacts remain immutable.
+
 ## 0.1.0a2
 
 Correct the PyPI publishing action pin to the verified release commit. Runtime behavior unchanged from 0.1.0a1. The first GitHub alpha was not published to PyPI.

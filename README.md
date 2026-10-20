@@ -4,11 +4,11 @@
 
 Passport is an independent, open-source personal-information vault from Toll Bench. This first alpha runs locally, encrypts information in your browser, and lets you export selected information as a separately encrypted package. No Toll Bench account, AI provider, telemetry or cloud storage is used.
 
-**Status: 0.1.0a2, standalone reference alpha. Not independently security-audited.** This is a local foundation, not a hosted multi-user vault. Use sample information while evaluating it. Toll Bench integration is intentionally not included.
+**Status: 0.1.0a3, standalone reference alpha. Not independently security-audited.** This is a local foundation, not a hosted multi-user vault. Use sample information while evaluating it. Toll Bench integration is intentionally not included.
 
 ## Run it
 
-Published alpha: `python -m pip install toll-passport==0.1.0a2`, then `toll-passport serve`. See the [verified release receipt](docs/RELEASE_RECEIPT.md).
+Published alpha: `python -m pip install toll-passport==0.1.0a3`, then `toll-passport serve`. See the [verified release receipt](docs/RELEASE_RECEIPT.md).
 
 Python 3.9 or later and a current browser with Web Crypto and IndexedDB are required. From a source checkout:
 
@@ -19,7 +19,7 @@ python -m pip install .
 toll-passport serve
 ```
 
-Open **http://127.0.0.1:8765**. Keep that exact address and port: browser storage is scoped to its origin. A different port or `localhost` is a different storage location. Install a released wheel with `python -m pip install path/to/toll_passport-0.1.0a2-py3-none-any.whl`. A GitHub release does not imply availability on PyPI; check the release notes.
+Open **http://127.0.0.1:8765**. Keep that exact address and port: browser storage is scoped to its origin. A different port or `localhost` is a different storage location. Install a released wheel with `python -m pip install path/to/toll_passport-0.1.0a3-py3-none-any.whl`. A GitHub release does not imply availability on PyPI; check the release notes.
 
 ## What works
 
@@ -69,6 +69,6 @@ Node 22 is used for core tests. Browser checks use Playwright as a development-o
 
 ## Ownership and attribution
 
-Copyright 2026 **Steven Ochs and The Book of Houses**. Created for [Toll Bench](https://tollbench.com). Licensed under [Apache-2.0](LICENSE); preserve [NOTICE](NOTICE) with redistributions as applicable. This license applies to Passport's included source, not the private Toll Bench application or its trademarks. See [third-party notices](THIRD_PARTY_NOTICES.md) and [citation metadata](CITATION.cff).
+Copyright 2026 **Steven Ochs and Tollbench**. Created for [Toll Bench](https://tollbench.com). Licensed under [Apache-2.0](LICENSE); preserve [NOTICE](NOTICE) with redistributions as applicable. This license applies to Passport's included source, not the private Toll Bench application or its trademarks. See [third-party notices](THIRD_PARTY_NOTICES.md) and [citation metadata](CITATION.cff).
 
 This is newly authored Passport code. No Ente, Bitwarden or proprietary Toll Bench implementation was copied. Cryptographic primitives are supplied by Web Crypto; this is not a new encryption algorithm. See [security](SECURITY.md) and [format](docs/FORMAT.md) before extending the reference implementation.

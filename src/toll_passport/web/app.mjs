@@ -1,4 +1,4 @@
-// Copyright 2026 Steven Ochs and The Book of Houses. SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Steven Ochs and Tollbench. SPDX-License-Identifier: Apache-2.0
 import {
   createVault,
   unlockVault,
