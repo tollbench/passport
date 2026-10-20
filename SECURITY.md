@@ -2,7 +2,7 @@
 
 ## Supported release
 
-0.1.0a1 is an experimental local reference alpha. It has automated adversarial-input and isolation tests but no independent cryptographic or penetration audit. Do not describe it as production-certified or use it as the only copy of important data.
+0.1.0a2 is an experimental local reference alpha. It has automated adversarial-input and isolation tests but no independent cryptographic or penetration audit. Do not describe it as production-certified or use it as the only copy of important data.
 
 ## Threat boundary
 
