@@ -39,7 +39,7 @@ jobs:
           python -m twine check dist/*
           python -m pip install dist/*.whl
           python -m unittest discover -s tests -p 'test_*.py' -v
-          python -c "from importlib.resources import files; p=files('toll_passport').joinpath('web'); [p.joinpath(n).read_bytes() for n in ('index.html', 'app.mjs', 'vault.mjs', 'style.css')]"
+          python -c "from importlib.resources import files; p=files('toll_passport').joinpath('web'); [p.joinpath(n).read_bytes() for n in ('index.html', 'app.mjs', 'vault.mjs', 'answers.mjs', 'style.css')]"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: passport-distributions

@@ -2,7 +2,7 @@
 
 ## Supported release
 
-0.1.0a3 is an experimental local reference alpha. It has automated adversarial-input and isolation tests but no independent cryptographic or penetration audit. Do not describe it as production-certified or use it as the only copy of important data.
+0.1.0a4 is an experimental local reference alpha. It has automated adversarial-input and isolation tests but no independent cryptographic or penetration audit. Do not describe it as production-certified or use it as the only copy of important data.
 
 ## Threat boundary
 
@@ -11,6 +11,10 @@ Browser Web Crypto encrypts a whole vault snapshot using AES-256-GCM, a fresh 96
 An attacker who acquires only the encrypted backup lacks its decryption key. The owner must protect the recovery file and device. This implementation does not protect against malicious extensions, an unlocked/compromised device, a malicious software update, screenshots, copied plaintext or a recipient redistributing released information. JavaScript memory cannot be reliably zeroized. Encryption hides content, not encrypted size, origin storage existence or download timing.
 
 Version authentication detects tampering but cannot detect replay of an older valid backup. Local optimistic concurrency prevents overwriting an unexpected snapshot; it is not distributed synchronization. The same browser origin can access the vault. Never serve untrusted scripts on that origin. The server is deliberately loopback-only and is not an authenticated cloud service.
+
+## Saved-answer lookup
+
+Saved-answer matching runs only in the unlocked browser, with no model or network calls. Optional producer labels are hints, not authority to choose subjects or widen reuse scope. Matching requires an exact subject, a recognized label and the documented task/reusable scope rules. The owner explicitly selects a candidate and reviews the local form before saving. Provenance and age warnings aid review; they do not prove truth, consent or current relevance. Lookup and form filling never select or export a sharing package.
 
 ## Recovery and release files
 

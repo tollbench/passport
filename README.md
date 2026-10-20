@@ -4,11 +4,11 @@
 
 Passport is an independent, open-source personal-information vault from Toll Bench. This first alpha runs locally, encrypts information in your browser, and lets you export selected information as a separately encrypted package. No Toll Bench account, AI provider, telemetry or cloud storage is used.
 
-**Status: 0.1.0a3, standalone reference alpha. Not independently security-audited.** This is a local foundation, not a hosted multi-user vault. Use sample information while evaluating it. Toll Bench integration is intentionally not included.
+**Status: 0.1.0a4, standalone reference alpha. Not independently security-audited.** This is a local foundation, not a hosted multi-user vault. Use sample information while evaluating it. Toll Bench integration is intentionally not included.
 
 ## Run it
 
-Published alpha: `python -m pip install toll-passport==0.1.0a3`, then `toll-passport serve`. See the [verified release receipt](docs/RELEASE_RECEIPT.md).
+Published alpha: `python -m pip install toll-passport==0.1.0a4`, then `toll-passport serve`. See the [verified release receipt](docs/RELEASE_RECEIPT.md).
 
 Python 3.9 or later and a current browser with Web Crypto and IndexedDB are required. From a source checkout:
 
@@ -19,12 +19,13 @@ python -m pip install .
 toll-passport serve
 ```
 
-Open **http://127.0.0.1:8765**. Keep that exact address and port: browser storage is scoped to its origin. A different port or `localhost` is a different storage location. Install a released wheel with `python -m pip install path/to/toll_passport-0.1.0a3-py3-none-any.whl`. A GitHub release does not imply availability on PyPI; check the release notes.
+Open **http://127.0.0.1:8765**. Keep that exact address and port: browser storage is scoped to its origin. A different port or `localhost` is a different storage location. Install a released wheel with `python -m pip install path/to/toll_passport-0.1.0a4-py3-none-any.whl`. A GitHub release does not imply availability on PyPI; check the release notes.
 
 ## What works
 
 - Create a vault with an automatically generated encryption key.
 - Save notes, structured answers, optional labels and multiple files locally.
+- Find saved answers for an exact subject and task context, review their source and age, and explicitly fill the local answer form.
 - Encrypt titles, tags, filenames and contents before writing browser storage.
 - Lock and unlock using a separate recovery file.
 - Export an encrypted backup and restore it into another browser.
@@ -40,7 +41,7 @@ Creation automatically requests a **recovery-file download**. Store that file se
 
 The unlocked key is kept in page memory, not IndexedDB, localStorage or the Python server. Refreshing, closing or locking the page requires the recovery file again. A compromised device or browser extension may read unlocked information. This alpha has no passkeys, OS keychain integration, password protection or multi-device synchronization.
 
-Files are limited to 25 MiB each; the encrypted snapshot is limited to 100 MiB. Base64 encoding, metadata and versions consume some of that space. The local server only serves four static assets on loopback and accepts no uploads. It is not a remote deployment server.
+Files are limited to 25 MiB each; the encrypted snapshot is limited to 100 MiB. Base64 encoding, metadata and versions consume some of that space. The local server only serves five static assets on loopback and accepts no uploads. It is not a remote deployment server.
 
 ## Sharing
 
@@ -50,7 +51,7 @@ The recipient and purpose are authenticated package metadata, **not verified rec
 
 ## Optional question labels
 
-A question-producing application may suggest a stable key, subject and scope. The reference UI accepts optional labels including unfamiliar ones. Missing labels never prevent saving, fail an agent or affect a score. Answers remain private until selected for release. [Question metadata contract](docs/QUESTION_LABELS.md).
+A question-producing application may suggest a stable question key. Subject, task reference and reuse scope come from trusted owner context. The reference UI accepts optional labels including unfamiliar ones. Recognized labels can find saved answers for matching context; the owner reviews candidates and explicitly chooses an answer to fill the form. Missing labels never prevent saving, fail an agent or affect a score. Answers remain private until selected for release. Automatic agent question intake and hosted integration remain separate work. [Question metadata contract](docs/QUESTION_LABELS.md).
 
 ## Development
 

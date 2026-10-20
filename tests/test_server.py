@@ -52,6 +52,12 @@ class ServerTests(unittest.TestCase):
                     self.assertNotIn("Access-Control-Allow-Origin", headers)
                     read.assert_called_with(filename)
 
+    def test_saved_answer_module_is_packaged_and_allowlisted(self):
+        status, headers, body = self.request("/answers.mjs")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "text/javascript; charset=utf-8")
+        self.assertIn(b"export function findAnswerCandidates", body)
+
     def test_head_has_no_body(self):
         with patch("toll_passport.server._asset", return_value=b"asset"):
             status, headers, body = self.request(method="HEAD")

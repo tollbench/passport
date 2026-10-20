@@ -5,6 +5,8 @@ import tempfile
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
+base_url = os.environ.get('PASSPORT_URL', 'http://127.0.0.1:8765/')
+
 with tempfile.TemporaryDirectory(prefix='passport-browser-') as tmp, sync_playwright() as p:
     options = {'headless': True}
     if os.environ.get('PASSPORT_CHROME'):
@@ -15,7 +17,7 @@ with tempfile.TemporaryDirectory(prefix='passport-browser-') as tmp, sync_playwr
     requests, errors = [], []
     page.on('request', lambda r: requests.append((r.method, r.url)))
     page.on('pageerror', lambda e: errors.append(str(e)))
-    page.goto('http://127.0.0.1:8765/')
+    page.goto(base_url)
     expect(page.locator('#create')).to_be_visible()
     with page.expect_download() as d:
         page.locator('#create').click()
@@ -29,9 +31,57 @@ with tempfile.TemporaryDirectory(prefix='passport-browser-') as tmp, sync_playwr
     expect(page.locator('#entries')).to_contain_text('PRIVATE_BODY_CANARY')
     page.locator('#question-form [name=question]').fill('Who should we target?')
     page.locator('#question-form [name=answer]').fill('Builders')
-    page.locator('#question-form [name=subject]').fill('Example business')
+    page.locator('#question-form [name=subject]').fill('business:example')
+    page.locator('#question-form [name=tag]').fill('audience')
+    page.locator('#question-form [name=taskId]').fill('task:one')
     page.locator('#question-form button').click()
     expect(page.locator('#entries')).to_contain_text('Builders')
+    # Saved-answer lookup respects exact context and fills only after explicit use.
+    question = page.locator('#question-form')
+    question.locator('[name=question]').fill('Who is this for?')
+    question.locator('[name=subject]').fill('business:other')
+    question.locator('[name=tag]').fill('target audience')
+    question.locator('[name=taskId]').fill('task:one')
+    expect(page.locator('#answer-suggestions')).to_be_hidden()
+    question.locator('[name=subject]').fill('business:example')
+    question.locator('[name=taskId]').fill('task:other')
+    expect(page.locator('#answer-suggestions')).to_be_hidden()
+    question.locator('[name=taskId]').fill('task:one')
+    expect(page.locator('#answer-suggestions')).to_contain_text('Version 1')
+    expect(question.locator('[name=answer]')).to_have_value('')
+    before_use = page.locator('#usage').inner_text()
+    page.get_by_role('button', name='Use this answer', exact=True).click()
+    expect(question.locator('[name=answer]')).to_have_value('Builders')
+    expect(page.locator('#answer-source')).to_contain_text('Filled from')
+    expect(page.locator('#share')).to_be_hidden()
+    assert page.locator('#usage').inner_text() == before_use
+    # Moving to another context removes an unedited fill and its provenance.
+    question.locator('[name=taskId]').fill('task:other')
+    expect(question.locator('[name=answer]')).to_have_value('')
+    expect(page.locator('#answer-source')).to_be_empty()
+    question.locator('[name=taskId]').fill('task:one')
+    page.get_by_role('button', name='Use this answer', exact=True).click()
+    # Explicit save creates a second candidate; neither candidate is selected automatically.
+    question.get_by_role('button', name='Save answer privately', exact=True).click()
+    expect(page.locator('#entries .record')).to_have_count(3)
+    expect(page.locator('#entries .record').last).to_contain_text('reusedFrom:')
+    question.locator('[name=subject]').fill('business:example')
+    question.locator('[name=tag]').fill('audience')
+    question.locator('[name=taskId]').fill('task:one')
+    expect(page.get_by_role('button', name='Use this answer', exact=True)).to_have_count(2)
+    expect(page.locator('#answer-suggestions')).to_contain_text('Several answers match')
+    expect(question.locator('[name=answer]')).to_have_value('')
+    page.get_by_role('button', name='Use this answer', exact=True).first.click()
+    question.locator('[name=answer]').fill('My edited answer')
+    expect(page.locator('#answer-source')).to_be_empty()
+    question.locator('[name=question]').fill('Edited answer')
+    question.get_by_role('button', name='Save answer privately', exact=True).click()
+    expect(page.locator('#entries .record')).to_have_count(4)
+    assert 'reusedFrom:' not in page.locator('#entries .record').last.inner_text()
+    question.locator('[name=subject]').fill('business:example')
+    question.locator('[name=taskId]').fill('task:one')
+    question.locator('[name=tag]').fill('unknown label')
+    expect(page.locator('#answer-suggestions')).to_be_hidden()
     page.locator('#upload').set_input_files({'name':'example.txt','mimeType':'text/plain','buffer':b'PRIVATE_FILE_CANARY'})
     expect(page.locator('#entries')).to_contain_text('example.txt')
     with page.expect_download() as d:
@@ -71,6 +121,8 @@ with tempfile.TemporaryDirectory(prefix='passport-browser-') as tmp, sync_playwr
     assert released['fields']=={'content':'PRIVATE_BODY_CANARY'} and 'title' not in released and 'files' not in released
     page.locator('#lock').click()
     expect(page.locator('#locked')).to_be_visible()
+    expect(page.locator('#answer-suggestions')).to_be_empty()
+    expect(page.locator('#answer-source')).to_be_empty()
     assert 'PRIVATE_BODY_CANARY' not in page.locator('body').inner_text()
     page.locator('#unlock').set_input_files(str(sharedkey))
     expect(page.locator('#status')).to_contain_text('Could not complete')
@@ -78,7 +130,7 @@ with tempfile.TemporaryDirectory(prefix='passport-browser-') as tmp, sync_playwr
     page.locator('#unlock').set_input_files(str(recovery))
     expect(page.locator('#entries')).to_contain_text('PRIVATE_BODY_CANARY')
     # Restore into a second empty browser context: both files required, content preserved.
-    other=browser.new_context(accept_downloads=True);q=other.new_page();q.goto('http://127.0.0.1:8765/')
+    other=browser.new_context(accept_downloads=True);q=other.new_page();q.goto(base_url)
     with q.expect_file_chooser() as fc:
         q.locator('#restore').set_input_files(str(backup))
     fc.value.set_files(str(recovery))
@@ -109,7 +161,7 @@ with tempfile.TemporaryDirectory(prefix='passport-browser-') as tmp, sync_playwr
     expect(q.locator('#entries')).to_contain_text('KEEP_ORIGINAL')
     expect(q.locator('#entries')).to_contain_text('KEEP_PURPOSE')
     # Cross-tab change locks an existing unlocked view rather than overwriting it.
-    tab=context.new_page();tab.goto('http://127.0.0.1:8765/')
+    tab=context.new_page();tab.goto(base_url)
     tab.locator('#unlock').set_input_files(str(recovery))
     expect(tab.locator('#book')).to_be_visible()
     tab.locator('#entry-form [name=title]').fill('Second tab')
@@ -124,6 +176,6 @@ with tempfile.TemporaryDirectory(prefix='passport-browser-') as tmp, sync_playwr
     page.set_viewport_size({'width':1000,'height':1000})
     page.screenshot(path=str(Path(tempfile.gettempdir())/'passport-desktop.png'),full_page=True)
     assert not errors, errors
-    assert all(method=='GET' and url.startswith('http://127.0.0.1:8765/') for method,url in requests),requests
-    print('PASS: create, optional tags, answers, upload, ciphertext storage, exact release, stale-preview invalidation, lock/recovery, wrong-key rejection, backup restore, cross-tab conflict, mobile layout, no external requests')
+    assert all(method=='GET' and url.startswith(base_url) for method,url in requests),requests
+    print('PASS: create, optional tags, answers, exact-context saved-answer fill and review, upload, ciphertext storage, exact release, stale-preview invalidation, lock/recovery, wrong-key rejection, backup restore, cross-tab conflict, mobile layout, no external requests')
     browser.close()
