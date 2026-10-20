@@ -35,3 +35,23 @@ CI passed the Python 3.9/3.13 matrix, vault core tests, installed-package tests 
 Verified the wheel author, NOTICE and browser attribution, absence of the incorrect ownership name in those assets, and exact runtime bytes against tagged source. A fresh download of the public PyPI wheel matched the CI artifact, installed in an isolated environment and reported `toll-passport 0.1.0a3`. GitHub prerelease includes those artifacts and SHA256SUMS. Previous tags, releases and this historical receipt remain intact.
 
 The hyphenated PyPI version endpoint temporarily returned HTTP 503 and project metadata was stale. Verification succeeded through the equivalent normalized version endpoint, https://pypi.org/pypi/toll_passport/0.1.0a3/json . No credentials were handled. No application deployment occurred in this release task; integration work proceeds separately under its own authorization.
+
+## 2026-10-20 — Saved-answer release 0.1.0a4
+
+Version: **0.1.0a4**. Source commit: `3984aec6ac89d58ddd979ff24cc072def05d32b0`. Ownership: **Steven Ochs and Tollbench**.
+
+- GitHub prerelease: https://github.com/tollbench/passport/releases/tag/v0.1.0a4
+- PyPI: https://pypi.org/project/toll-passport/0.1.0a4/
+- Successful CI: https://github.com/tollbench/passport/actions/runs/39512987235
+- Successful Trusted Publishing: https://github.com/tollbench/passport/actions/runs/39513212379
+
+This local alpha adds saved-answer candidates with exact subject/task matching, explicit reusable scope, provenance and age/ambiguity review, and explicit form filling. Blank task references remain valid for saving, with a visible explanation that they cannot support automatic suggestions. Sharing remains a separate selection. Automatic agent question intake and hosted/site integration are outside this release.
+
+Coordinator and independent review passed after the optional-reference hint correction. CI passed both Python 3.9/3.13 jobs, including 18 Node tests, 13 Python tests, five packaged browser assets and Chromium acceptance. The publication workflow passed and generated attestations. Public PyPI hashes matched the CI artifact and GitHub prerelease asset digests:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `toll_passport-0.1.0a4-py3-none-any.whl` | `9b090d7a04dab3458cb56cab8832cbc97806f674d5e54f39a753f98475cd231b` |
+| `toll_passport-0.1.0a4.tar.gz` | `cca81114970798249748ed54374d22bd062be7c7e16f4e2282ff7104926c4cd6` |
+
+Verified public version/author metadata, the new answers.mjs asset, ownership notice and all wheel runtime bytes against tagged source. A fresh public PyPI wheel download matched CI byte for byte, installed in an isolated environment and reported `toll-passport 0.1.0a4`. Full suites were not repeated after CI. GitHub prerelease contains the identical wheel, sdist and SHA256SUMS. Older releases and receipts remain intact. No production or staging application writes occurred.
