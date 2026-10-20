@@ -56,7 +56,7 @@ function button(text, fn, cls = 'secondary') {
 async function run(fn) {
   if (busy) return;
   busy = true;
-  document.querySelectorAll('button').forEach(b => b.disabled = true);
+  document.querySelectorAll('button,input[type=file]').forEach(b => b.disabled = true);
   try {
     await fn();
   } catch (err) {
@@ -66,7 +66,7 @@ async function run(fn) {
     console.error('Passport operation failed:', err?.name || 'Error');
   } finally {
     busy = false;
-    document.querySelectorAll('button').forEach(b => b.disabled = false);
+    document.querySelectorAll('button,input[type=file]').forEach(b => b.disabled = false);
   }
 }
 
@@ -406,10 +406,14 @@ $('share-form').addEventListener('submit', e => {
   });
 });
 $('receive').addEventListener('change', e => run(async () => {
+  receivedEnvelope = null;
+  $('received').replaceChildren();
   receivedEnvelope = await jsonFile(e.target.files[0]);
   status('Shared package selected. Choose its separate key.');
 }));
 $('receive-key').addEventListener('change', e => run(async () => {
+  receivedRecovery = null;
+  $('received').replaceChildren();
   receivedRecovery = await jsonFile(e.target.files[0]);
   status('Package key selected. Preview to decrypt locally.');
 }));
