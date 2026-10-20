@@ -7,6 +7,7 @@ ASSETS = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
     "/app.mjs": ("app.mjs", "text/javascript; charset=utf-8"),
+    "/answers.mjs": ("answers.mjs", "text/javascript; charset=utf-8"),
     "/vault.mjs": ("vault.mjs", "text/javascript; charset=utf-8"),
     "/style.css": ("style.css", "text/css; charset=utf-8"),
 }

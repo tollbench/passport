@@ -10,10 +10,12 @@ import {
   encryptRelease,
   decryptRelease
 } from './vault.mjs';
+import { findAnswerCandidates } from './answers.mjs';
 const $ = id => document.getElementById(id);
 let key, doc, envelope, database, sharing, receivedEnvelope, receivedRecovery, busy = false,
   recoverySaved = false,
-  shareGeneration = 0;
+  shareGeneration = 0,
+  filledAnswer = null;
 const MAX_FILE = 25 * 1024 * 1024,
   MAX_IMPORT = 145 * 1024 * 1024;
 const channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('passport-local-v1') :
@@ -26,6 +28,11 @@ function invalidateShare() {
 
 function clearTransient() {
   invalidateShare();
+  filledAnswer = null;
+  $('answer-suggestions').replaceChildren();
+  $('answer-suggestions').hidden = true;
+  $('answer-source').textContent = '';
+  $('task-reference').hidden = false;
   sharing = null;
   receivedEnvelope = null;
   receivedRecovery = null;
@@ -339,6 +346,56 @@ $('entry-form').addEventListener('submit', e => {
     e.target.reset();
   });
 });
+function answerContext() {
+  const f = $('question-form').elements;
+  return { label: f.tag.value, subject: f.subject.value, scope: f.scope.value,
+    taskId: f.taskId.value };
+}
+
+function suggestAnswers() {
+  const form = $('question-form'), context = answerContext();
+  const signature = JSON.stringify(context);
+  if (filledAnswer && filledAnswer.signature !== signature) {
+    if (form.elements.answer.value === filledAnswer.answer) form.elements.answer.value = '';
+    filledAnswer = null;
+    $('answer-source').textContent = '';
+  }
+  $('task-reference').hidden = context.scope !== 'task';
+  const container = $('answer-suggestions');
+  container.replaceChildren();
+  const candidates = key ? findAnswerCandidates(doc, context) : [];
+  container.hidden = !candidates.length;
+  if (!candidates.length) return;
+  container.append(node('h3', 'Use a saved answer'), node('p',
+    'Review an answer, then use it to fill this form privately.'));
+  for (const candidate of candidates) {
+    const { provenance: p, reviewReasons } = candidate;
+    const card = node('article', undefined, 'record');
+    const source = `${p.question} · Version ${p.version} · ${new Date(p.createdAt).toLocaleDateString()}`;
+    card.append(node('p', source, 'muted'), node('p', candidate.answer));
+    if (reviewReasons.length) card.append(node('p', reviewReasons.map(reason => ({
+      dated: 'Saved more than 180 days ago: check that it is still current.',
+      'future-date': 'Saved date is in the future: check this answer.',
+      'multiple-candidates': 'Several answers match: choose the one that applies.'
+    }[reason])).join(' '), 'notice'));
+    card.append(button('Use this answer', () => {
+      // Recheck context when used; a suggestion never authorizes a release.
+      if (JSON.stringify(answerContext()) !== signature) return;
+      form.elements.answer.value = candidate.answer;
+      filledAnswer = { signature, answer: candidate.answer,
+        reusedFrom: { entryId: p.entryId, version: p.version } };
+      $('answer-source').textContent = `Filled from ${source}. Review before saving.`;
+    }));
+    container.append(card);
+  }
+}
+for (const event of ['input', 'change']) $('question-form').addEventListener(event, e => {
+  if (e.target.name === 'answer' && filledAnswer && e.target.value !== filledAnswer.answer) {
+    filledAnswer = null;
+    $('answer-source').textContent = '';
+  }
+  if (['tag', 'subject', 'scope', 'taskId'].includes(e.target.name)) suggestAnswers();
+});
 $('question-form').addEventListener('submit', e => {
   e.preventDefault();
   run(async () => {
@@ -350,7 +407,11 @@ $('question-form').addEventListener('submit', e => {
         question: f.get('question'),
         answer: f.get('answer'),
         subject: f.get('subject'),
-        scope: f.get('scope')
+        scope: f.get('scope'),
+        label: f.get('tag'),
+        ...(filledAnswer && filledAnswer.signature === JSON.stringify(answerContext()) &&
+          filledAnswer.answer === f.get('answer') ? { reusedFrom: filledAnswer.reusedFrom } : {}),
+        ...(f.get('scope') === 'task' && f.get('taskId') ? { taskId: f.get('taskId') } : {})
       },
       tags: f.get('tag') ? [f.get('tag')] : [],
       files: await filesValue(e.target.elements.files.files)
