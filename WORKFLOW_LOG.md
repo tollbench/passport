@@ -47,3 +47,9 @@ Next action: commit the reviewed owned files and return the verification receipt
 ## 2026-10-20 — Saved-answer alpha release preparation
 
 Release worker merged component 8835357 into the isolated release branch, preserving the 0.1.0a3 receipt and both workflow histories. Prepared 0.1.0a4 metadata and public documentation for local saved-answer lookup and explicit form filling. Both CI and publishing use the Node test glob that includes answers.test.mjs; both packaged-asset checks now require the fifth browser asset. Component verification was reported by its worker; independent coordinator review remains pending. Publication is held until the coordinator passes review. No hosted integration or application deployment is included.
+
+### Review correction — Optional task reference
+
+Independent review identified that a blank task reference saved successfully but its exclusion from future suggestions was too quiet. Kept metadata optional and added inline help explaining that a reference enables finding the answer again for that task, while leaving it blank saves without automatic suggestions. Added browser regression coverage for the visible hint, successful blank-reference save, preserved task scope, and absence of suggestions both with a blank lookup reference and a later different reference. Verified: isolated browser acceptance on port 8876 passed, including the new blank-reference regression, existing private reuse/sharing checks and mobile layout. No external requests or page errors occurred. No matcher or sharing behavior changes.
+
+Release gate update: coordinator and independent review passed the client-only security/privacy scope. Integrated the reviewed optional-reference hint from 014e9c5 after its isolated browser acceptance passed. Coordinator authorized proceeding with 0.1.0a4 CI and Trusted Publishing; publication verification remains the next gate.
