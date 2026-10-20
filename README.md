@@ -8,6 +8,8 @@ Passport is an independent, open-source personal-information vault from Toll Ben
 
 ## Run it
 
+Published alpha: `python -m pip install toll-passport==0.1.0a2`, then `toll-passport serve`. See the [verified release receipt](docs/RELEASE_RECEIPT.md).
+
 Python 3.9 or later and a current browser with Web Crypto and IndexedDB are required. From a source checkout:
 
 ```sh
