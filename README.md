@@ -77,3 +77,7 @@ This is newly authored Passport code. No Ente, Bitwarden or proprietary Toll Ben
 ### Hosted extensions
 
 The optional [batch question channel](docs/BATCH_CHANNEL.md) supports private drafts and uploads followed by explicit disclosure to one named recipient. [Trusted fixed panels](docs/PANELS.md) let a host add its own encrypted-book UI without publishing its business features. These interfaces do not grant agents access to the vault.
+
+The optional [deterministic topic catalog](docs/TOPIC_MATCHING.md) supports private
+entity-specific answer reuse with editable question chips and the existing Send
+action. Unknown hints do not fail questions or grant access to saved information.

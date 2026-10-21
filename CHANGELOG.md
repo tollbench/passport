@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0a9
+
+- Optional versioned topic catalog and exact local entity/type/scope matching, with compact editable/removable chips on question cards.
+- Unresolved, stale or conflicting facts leave the normal answer blank; no classifier, inferred topic availability or legacy fact promotion.
+- Strict matching mode uses the existing named-recipient Send gesture with encrypted save first; old batch contexts retain their previous behavior.
+- Reusing unchanged facts preserves their versions and scope; explicit edits update a unique matching record append-only. Canonical catalog JSON is packaged for host adapters.
+
 ## 0.1.0a8
 
 - Optional generic batch question channel with bounded choices, private uploads, saved-answer provenance and explicit named-recipient release of selected answers/files.

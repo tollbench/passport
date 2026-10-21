@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "catalogVersion": "1",
+  "requestTypes": [
+    {
+      "requestType": "person.biography",
+      "label": "Biography",
+      "entityKind": "person",
+      "topic": "biography",
+      "valueType": "string",
+      "supportedFormats": [
+        "short_answer",
+        "written_response"
+      ]
+    },
+    {
+      "requestType": "person.food_preference",
+      "label": "Food preference",
+      "entityKind": "person",
+      "topic": "food_preference",
+      "valueType": "string",
+      "supportedFormats": [
+        "short_answer",
+        "written_response",
+        "single_choice"
+      ]
+    },
+    {
+      "requestType": "person.contact_preference",
+      "label": "Contact preference",
+      "entityKind": "person",
+      "topic": "contact_preference",
+      "valueType": "string",
+      "supportedFormats": [
+        "short_answer",
+        "written_response",
+        "single_choice"
+      ]
+    },
+    {
+      "requestType": "pet.diet",
+      "label": "Pet diet",
+      "entityKind": "pet",
+      "topic": "diet",
+      "valueType": "string",
+      "supportedFormats": [
+        "short_answer",
+        "written_response"
+      ]
+    },
+    {
+      "requestType": "organization.target_audience",
+      "label": "Organization audience",
+      "entityKind": "organization",
+      "topic": "target_audience",
+      "valueType": "string",
+      "supportedFormats": [
+        "short_answer",
+        "written_response"
+      ]
+    },
+    {
+      "requestType": "project.target_audience",
+      "label": "Project audience",
+      "entityKind": "project",
+      "topic": "target_audience",
+      "valueType": "string",
+      "supportedFormats": [
+        "short_answer",
+        "written_response"
+      ]
+    },
+    {
+      "requestType": "project.pitch_angle",
+      "label": "Pitch angle",
+      "entityKind": "project",
+      "topic": "pitch_angle",
+      "valueType": "string",
+      "supportedFormats": [
+        "short_answer",
+        "written_response"
+      ]
+    },
+    {
+      "requestType": "project.description",
+      "label": "Project description",
+      "entityKind": "project",
+      "topic": "description",
+      "valueType": "string",
+      "supportedFormats": [
+        "short_answer",
+        "written_response"
+      ]
+    },
+    {
+      "requestType": "project.communication_tone",
+      "label": "Communication tone",
+      "entityKind": "project",
+      "topic": "communication_tone",
+      "valueType": "string",
+      "supportedFormats": [
+        "short_answer",
+        "written_response",
+        "single_choice"
+      ]
+    },
+    {
+      "requestType": "project.podcast_preferences",
+      "label": "Podcast preferences",
+      "entityKind": "project",
+      "topic": "podcast_preferences",
+      "valueType": "string",
+      "supportedFormats": [
+        "short_answer",
+        "written_response",
+        "single_choice"
+      ]
+    },
+    {
+      "requestType": "person.food_restrictions",
+      "label": "Food restrictions",
+      "entityKind": "person",
+      "topic": "food_restrictions",
+      "valueType": "string[]",
+      "supportedFormats": [
+        "multiple_choice"
+      ]
+    }
+  ]
+}

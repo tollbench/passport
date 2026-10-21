@@ -30,3 +30,17 @@ leakage, failed-save blocking, changed context, idempotent retry, lock/stale-sav
 invalidation and real pointer interactions on a 390px-wide viewport. CI runs the
 batch fixture against installed package assets. Host authorization, actual
 recipient delivery and proprietary goal behavior require host-side tests.
+
+## a9 candidate: deterministic topic matching
+
+49 Node tests and 13 installed-wheel Python tests pass. Fresh installed a9 assets
+passed standalone, hosted, assigned-question, legacy batch/addon and new topic
+browser fixtures. The new fixture runs in an opaque iframe at mobile and desktop
+widths with synthetic person/pet/project records. It checks exact identity,
+removal of untouched automatic answers, preservation and explicit reclassification
+of human drafts, private encrypted saves, file-only material, failed-save blocking,
+direct named-recipient Send and no pre-send answer/entity/key disclosure. Source
+provenance must be visibly available before capture. Catalog JSON/module parity,
+choice option equality, stale/conflicting records and repeated-save fact/version
+behavior have focused Node coverage. These are functional boundary checks, not
+independent security certification; host delivery and authorization remain separate.

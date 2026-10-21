@@ -1,5 +1,6 @@
 // Copyright 2026 Steven Ochs and Tollbench. SPDX-License-Identifier: Apache-2.0
 // Explicit batch disclosure; independent of the unchanged ciphertext and single-question channels.
+import { validateMatching } from './topic-catalog.mjs';
 export const BATCH_PROTOCOL = 'passport-question-batch-v1';
 export const RELEASE_FILE_BYTES = 2 * 1024 * 1024;
 export const RELEASE_TOTAL_BYTES = 5 * 1024 * 1024;
@@ -16,7 +17,8 @@ export function fileBytes(file) {
   try { const raw = atob(file.data), bytes = raw.length; return bytes <= RELEASE_FILE_BYTES && btoa(raw) === file.data ? bytes : null; } catch { return null; }
 }
 export function validateBatchContext(v) {
-  if (!exact(v, ['requestId', 'token', 'scope', 'subject', 'taskId', 'purpose', 'recipient', 'questions', 'expiresAt']) ||
+  const keys=['requestId','token','scope','subject','taskId','purpose','recipient','questions','expiresAt'];
+  if (!(exact(v,keys)||exact(v,[...keys,'matching'])) ||
       !uuid(v.requestId) || !text(v.token, 32768) || !['personal', 'business'].includes(v.scope) ||
       !text(v.subject, 200) || !text(v.taskId, 200) || !text(v.purpose, 500) ||
       !exact(v.recipient, ['id', 'name']) || !text(v.recipient.id, 100) || !text(v.recipient.name, 200) ||
@@ -36,7 +38,7 @@ export function validateBatchContext(v) {
       }
     } else if (q.options.length) return false;
   }
-  return true;
+  return !Object.hasOwn(v,'matching') || validateMatching(v.matching,v.questions);
 }
 export function validValue(question, value) {
   if (['short_answer', 'written_response'].includes(question.format)) return text(value, 2000);

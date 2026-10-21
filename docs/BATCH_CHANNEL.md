@@ -73,3 +73,7 @@ already disclosed. This package is not independently security audited.
 contract, private save/release separation, file bounds, stale revisions, opaque
 frame messaging, mobile review and trusted-panel lifecycle. Hosts must test
 their actual authorization, concurrency, delivery and UI adapters separately.
+
+In a9, an optional [matching context](TOPIC_MATCHING.md) enables deterministic
+local entity/topic chips and direct on-card Send. The legacy context retains the
+flow above. Strict matching mode never uses the old label/exact-text fallback.

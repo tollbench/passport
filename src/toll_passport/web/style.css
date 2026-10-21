@@ -22,3 +22,14 @@
 #agent-question-batch .batch-review-body { max-height: min(55dvh, calc(100dvh - 16rem)); overflow-y: auto; }
 #agent-question-batch .batch-review-actions { display:flex; flex-wrap:wrap; gap:.5rem; background:white; border-top:1px solid var(--line); padding-top:.5rem; }
 #agent-question-batch .batch-review-actions button { flex:1 1 auto; }
+
+.topic-controls { display:flex; flex-wrap:wrap; align-items:start; gap:.5rem; padding:.5rem 0; }
+.topic-controls > label { flex:0 1 auto; max-width:100%; margin:.25rem 0; }
+.topic-controls > button { font-size:1.2rem; padding:.3rem .7rem; margin:.5rem 0 0; }
+.topic-controls > details,.topic-controls > p { flex-basis:100%; margin:.25rem 0; }
+.topic-controls select { border-radius:1.5rem; padding:.5rem .75rem; font-size:.9rem; }
+
+.topic-controls select { width:auto; max-width:100%; background:#f4f0fa; }
+.topic-control-caption { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
+
+.topic-controls > details { border:0; padding:0; }
