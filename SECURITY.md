@@ -2,7 +2,7 @@
 
 ## Supported release
 
-0.1.0a4 is an experimental local reference alpha. It has automated adversarial-input and isolation tests but no independent cryptographic or penetration audit. Do not describe it as production-certified or use it as the only copy of important data.
+0.1.0a5 adds a hosted client to the experimental reference implementation. It has automated adversarial-input and isolation tests but no independent cryptographic or penetration audit. Do not describe it as production-certified or use it as the only copy of important data.
 
 ## Threat boundary
 
@@ -25,3 +25,7 @@ Release packages use independent random keys and explicit field selection. Recip
 ## Reporting
 
 Use the repository's private GitHub vulnerability reporting facility when enabled: https://github.com/tollbench/passport/security/advisories/new . Do not post real keys, private vault data or exploitable vulnerability details in public issues. If private reporting is unavailable, open a public issue asking only for a private contact method, without vulnerability details. Maintainers should enable private reporting before inviting sensitive reports.
+
+## Hosted client component
+
+The separate source entry point `hosted.html` runs in an opaque sandbox and exchanges only validated encrypted envelopes and storage metadata with its parent. Recovery keys and decrypted data remain inside the frame. The authenticated host must enforce owner permissions, atomic ETags and storage quotas. Read the [required embedding contract and delivery threat boundary](docs/HOSTED.md) before integrating. This component does not change the published local server, implement team key sharing or constitute an independent security audit.

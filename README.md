@@ -2,9 +2,9 @@
 
 **Your information. Your choice of what to share.**
 
-Passport is an independent, open-source personal-information vault from Toll Bench. This first alpha runs locally, encrypts information in your browser, and lets you export selected information as a separately encrypted package. No Toll Bench account, AI provider, telemetry or cloud storage is used.
+Passport is an independent, open-source personal-information vault from Toll Bench. It encrypts information in your browser and lets you export selected information as a separately encrypted package. The standalone application runs locally without an account, AI provider, telemetry or cloud storage. A separate hosted client connects encrypted storage to an authenticated host through an isolated frame.
 
-**Status: 0.1.0a4, standalone reference alpha. Not independently security-audited.** This is a local foundation, not a hosted multi-user vault. Use sample information while evaluating it. Toll Bench integration is intentionally not included.
+**Status: 0.1.0a5 source candidate. Not independently security-audited.** Includes the standalone reference application and a separate hosted client component. Use sample information while evaluating it. The published standalone release remains unchanged. See [hosted embedding and security responsibilities](docs/HOSTED.md).
 
 ## Run it
 
@@ -51,7 +51,7 @@ The recipient and purpose are authenticated package metadata, **not verified rec
 
 ## Optional question labels
 
-A question-producing application may suggest a stable question key. Subject, task reference and reuse scope come from trusted owner context. The reference UI accepts optional labels including unfamiliar ones. Recognized labels can find saved answers for matching context; the owner reviews candidates and explicitly chooses an answer to fill the form. Missing labels never prevent saving, fail an agent or affect a score. Answers remain private until selected for release. Automatic agent question intake and hosted integration remain separate work. [Question metadata contract](docs/QUESTION_LABELS.md).
+A question-producing application may suggest a stable question key. Subject, task reference and reuse scope come from trusted owner context. The reference UI accepts optional labels including unfamiliar ones. Recognized labels can find saved answers for matching context; the owner reviews candidates and explicitly chooses an answer to fill the form. Missing labels never prevent saving, fail an agent or affect a score. Answers remain private until selected for release. Automatic agent question intake remains separate work. [Question metadata contract](docs/QUESTION_LABELS.md).
 
 ## Development
 

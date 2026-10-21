@@ -36,7 +36,7 @@ jobs:
           python -m pip install dist/*.whl
           python -m unittest discover -s tests -p 'test_*.py' -v
           toll-passport --version
-          python -c "from importlib.resources import files; p=files('toll_passport').joinpath('web'); [p.joinpath(n).read_bytes() for n in ('index.html', 'app.mjs', 'vault.mjs', 'answers.mjs', 'style.css')]"
+          python -c "from importlib.resources import files; p=files('toll_passport').joinpath('web'); [p.joinpath(n).read_bytes() for n in ('index.html', 'app.mjs', 'vault.mjs', 'answers.mjs', 'style.css', 'hosted.html', 'hosted.mjs', 'hosted-bridge.mjs')]"
       - name: Browser acceptance
         if: matrix.python == '3.13'
         run: |
@@ -57,3 +57,4 @@ jobs:
               raise RuntimeError('Local server did not start')
           PYCODE
           python tests/browser_smoke.py
+          python tests/browser_hosted.py
