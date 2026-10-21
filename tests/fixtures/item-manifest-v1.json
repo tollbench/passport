@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "sourceVersion": 9007199254740991,
+      "title": "Résumé 東京 😀",
+      "kind": "note",
+      "fields": {
+        "Z": "line\nnext",
+        "a": "é / \\ \"",
+        "Topic": "Unicode stays intact"
+      },
+      "files": []
+    }
+  ],
+  "canonical": "[{\"fields\":{\"Topic\":\"Unicode stays intact\",\"Z\":\"line\\nnext\",\"a\":\"é / \\\\ \\\"\"},\"files\":[],\"id\":\"11111111-1111-4111-8111-111111111111\",\"kind\":\"note\",\"sourceVersion\":9007199254740991,\"title\":\"Résumé 東京 😀\"}]",
+  "sha256": "f8c9f771307882639078dc8119da92bc1d154c9ac9ddc314457faaba8caaba46"
+}

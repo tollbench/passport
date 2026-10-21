@@ -36,7 +36,7 @@ jobs:
           python -m pip install dist/*.whl
           python -m unittest discover -s tests -p 'test_*.py' -v
           toll-passport --version
-          python -c "from importlib.resources import files; p=files('toll_passport').joinpath('web'); [p.joinpath(n).read_bytes() for n in ('index.html', 'app.mjs', 'vault.mjs', 'answers.mjs', 'style.css', 'hosted.html', 'hosted.mjs', 'hosted-bridge.mjs', 'question-channel.mjs', 'question-answer.mjs', 'question-batch-channel.mjs', 'question-batch.mjs', 'topic-catalog.mjs', 'topic-editor.mjs', 'request-types.json')]"
+          python -c "from importlib.resources import files; p=files('toll_passport').joinpath('web'); [p.joinpath(n).read_bytes() for n in ('index.html', 'app.mjs', 'vault.mjs', 'answers.mjs', 'style.css', 'hosted.html', 'hosted.mjs', 'hosted-bridge.mjs', 'question-channel.mjs', 'question-answer.mjs', 'question-batch-channel.mjs', 'question-batch.mjs', 'topic-catalog.mjs', 'topic-editor.mjs', 'request-types.json', 'item-selection.mjs', 'item-share-channel.mjs', 'item-picker.mjs', 'local-import.mjs')]"
       - name: Browser acceptance
         if: matrix.python == '3.13'
         run: |
@@ -61,3 +61,4 @@ jobs:
           python tests/browser_questions.py
           python tests/browser_batches.py
           python tests/browser_topics.py
+          python tests/browser_items.py

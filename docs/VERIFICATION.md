@@ -44,3 +44,16 @@ provenance must be visibly available before capture. Catalog JSON/module parity,
 choice option equality, stale/conflicting records and repeated-save fact/version
 behavior have focused Node coverage. These are functional boundary checks, not
 independent security certification; host delivery and authorization remain separate.
+
+## a10 candidate: selected item copies and local imports
+
+64 Node tests and 13 installed-wheel Python tests pass. Installed-wheel browser
+acceptance covers all five earlier flows plus the opaque item picker at mobile
+width. Synthetic item tests check exact pinned versions/fields/files, private
+upload preview, usable folder creation, no preapproval disclosure, failed-save
+blocking, same-session encrypted save acknowledgement, idempotent grant retry,
+private receipt and compact reference-only intent records. A canonical Unicode
+manifest fixture is verified by JavaScript and Python. Import tests preserve
+original versions and refuse changed-source overwrite of owner-enriched notes.
+Host authorization/revocation/database concurrency and actual owner-flow use are
+separate acceptance gates; public fixtures do not imply those are deployed.

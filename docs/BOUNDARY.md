@@ -4,12 +4,12 @@ Passport supplies private information storage, encryption, recovery, portability
 
 Toll Bench owns the separate application implementations: contact-book/CRM workflows and lists, goals and supporting goals, action packs/cards and recurrence, departments, agent operations, heats/proposals, marketplace payments and reputation. Those sources are not copied into Passport. The Apache license covers only included Passport files; this boundary does not attempt to restrict what others may independently build under that license.
 
-The standalone application is a local browser vault. The hosted client is one component of the broader hosted architecture. The separately authorized [hosted client component](HOSTED.md) now provides a sandboxed ciphertext-only bridge using the same public format and cryptography. Its host adapter supplies authentication, owner authorization, atomic storage and quotas; those are outside the standalone server. Publication and deployment remain separate from the existing standalone release. The following are outstanding integration gates:
+The standalone application is a local browser vault. The hosted client is one component of the broader hosted architecture. The separately authorized [hosted client component](HOSTED.md) now provides a sandboxed ciphertext-only bridge using the same public format and cryptography. Its host adapter supplies authentication, owner authorization, atomic storage and quotas; those are outside the standalone server. Publication and deployment remain separate from the existing standalone release. Every consuming host has its own implementation and acceptance gates; this library does not assert their deployment status:
 
 - Owner-device recovery/unlocking UX beyond bearer recovery files; passkey support and fallback.
-- Owner-encrypted item storage and a ciphertext-only storage service with authentication, quotas and restore tests.
+- Authenticated ciphertext storage with atomic concurrency, quotas and verified restore; public hosted fixtures do not substitute for host acceptance.
 - Independent origin/update threat review; embedding must not expose keys to host scripts.
-- Verified recipient identity and bounded grant delivery; opaque recipient strings in exported files do not implement authorization.
+- Verified recipient identity and bounded grant delivery. The public item/question channels supply explicit copies; the host enforces authorization, scope, expiry and future-read revocation. Opaque recipient strings in standalone exported files do not enforce those rules.
 - Business membership and cryptographic key distribution, rotation and departure handling.
 - Reviewed migration of legacy server-readable contacts/files; no retroactive privacy claims or silent deletion.
 - Versioned package consumption, integration tests and update PRs. No duplicated source fork and no automatic production deployments.

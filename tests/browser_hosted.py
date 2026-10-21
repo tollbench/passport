@@ -152,7 +152,7 @@ with tempfile.TemporaryDirectory(prefix='passport-hosted-') as tmp, ThreadingHTT
     page.set_viewport_size({'width':1100,'height':1000})
     page.screenshot(path=str(Path(tempfile.gettempdir())/'passport-hosted-desktop.png'),full_page=True)
     assert not errors,errors
-    allowed={'/host','/hosted.html','/style.css','/hosted.mjs','/hosted-bridge.mjs','/vault.mjs','/answers.mjs','/question-channel.mjs','/question-answer.mjs','/question-batch-channel.mjs','/question-batch.mjs','/topic-catalog.mjs','/topic-editor.mjs'}
+    allowed={'/host','/hosted.html','/style.css','/hosted.mjs','/hosted-bridge.mjs','/vault.mjs','/answers.mjs','/question-channel.mjs','/question-answer.mjs','/question-batch-channel.mjs','/question-batch.mjs','/topic-catalog.mjs','/topic-editor.mjs', '/item-selection.mjs', '/item-share-channel.mjs', '/item-picker.mjs'}
     assert all(method=='GET' and url.removeprefix(base) in allowed for method,url in requests if not url.startswith('https://example.invalid')),requests
     assert all(secret not in json.dumps(page.evaluate("Object.values(localStorage)")) for secret in secrets)
     print('PASS hosted: opaque sandbox, recovery-before-create, encrypted persistence, notes/files/answers/reuse, selected export, conflict/failure draft retention, scope consent+clearing, backup restore, delete isolation, reload/recovery, tamper/wrong-key rejection, ciphertext-only bridge/storage, CSP network block, mobile layout, no unexpected requests or page errors')

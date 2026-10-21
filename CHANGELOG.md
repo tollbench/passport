@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0a10
+
+- Add optional exact-version item picker/channel with explicit approval after encrypted intent save, pinned folder snapshots and selected private uploads.
+- Keep source IDs private; bound approved copies and support idempotent pending-intent reconstruction without duplicating attachments.
+- Add provider-neutral local source import helper with stable identity, repeat no-op and immutable versions; imported prose remains unclassified.
+- Clarify standalone downloads versus authenticated host grants and preserve existing encryption/question contracts.
+
+
 ## 0.1.0a9
 
 - Optional versioned topic catalog and exact local entity/type/scope matching, with compact editable/removable chips on question cards.

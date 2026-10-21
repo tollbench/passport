@@ -13,3 +13,7 @@ A sharing selection identifies entry ID, exact version, field names, recipient a
 No key reuse between the vault and a release. A release carries no access to unselected information. Its recipient string is descriptive; verified recipient encryption, online grants, expiration and revocation are not part of format v1.
 
 The reference core is `src/toll_passport/web/vault.mjs`. APIs are asynchronous create/seal/unlock/exportRecovery/encryptRelease/decryptRelease, plus synchronous immutable addEntry/removeEntry/selectRelease/validateDocument. Code examples and tests must use synthetic data. Changes to wire meaning require a new format identifier and migration tests.
+
+## Hosted selected-item copies (a10)
+
+The legacy `passport-release-v1` download format above is unchanged, including its all-files `$files` selection. The separate `passport-item-share-v1` hosted channel can select individual files and exact string fields from pinned versions. Its recipient authorization, expiry and revocation are host responsibilities. See [ITEM_SHARING.md](ITEM_SHARING.md) for exact schemas, canonical digest rules, limits and encrypted intent references. Generic collection, intent and source-import records fit inside the existing format-v1 encrypted entries; they do not change encryption or promote imported prose into classified answers.

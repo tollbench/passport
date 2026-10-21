@@ -11,13 +11,12 @@ The authenticated host embeds the full-page client with exactly
 `sandbox="allow-scripts allow-downloads"`. **Do not add `allow-same-origin`.** The
 frame has an opaque origin; host scripts cannot read its DOM, keys or plaintext.
 Serve `hosted.html`, `hosted.mjs`, `hosted-bridge.mjs`, `vault.mjs`, `answers.mjs` and
-`style.css` as static files. Module responses require
+`style.css` as static files. Current hosted builds also import `question-channel.mjs`, `question-answer.mjs`, `question-batch-channel.mjs`, `question-batch.mjs`, `topic-catalog.mjs`, `topic-editor.mjs`, `item-selection.mjs`, `item-share-channel.mjs` and `item-picker.mjs`. Package resources also include `request-types.json` for host catalog checks and `local-import.mjs` for trusted local import adapters. Update this allowlist before installing a new release; optional channel absence does not eliminate its module imports. Module responses require
 `Access-Control-Allow-Origin: *` because the frame's origin is opaque. Serve the
 page over HTTPS (loopback is suitable for development). These assets contain no
 credentials and must not require cookies. Apply a response CSP including
 `frame-ancestors` restricted to the authorized host. Retain the document's strict
-CSP: no connections, embedded objects, forms or base URL changes. Do not inject
-scripts or owner data into the frame. Form actions and confirmation dialogs are
+CSP: no connections, embedded objects, forms or base URL changes. Do not inject owner data or arbitrary scripts into the frame. Reviewed fixed addon modules follow the explicit trust boundary in [PANELS.md](PANELS.md). Form actions and confirmation dialogs are
 implemented within the frame without granting navigation or modal permissions.
 
 The host and assets are trusted software. A malicious host can replace the
@@ -117,3 +116,7 @@ needed. No production services, model calls or paid providers are involved.
 Copyright 2026 Steven Ochs and Tollbench. Apache-2.0.
 
 The optional question channel adds `question-channel.mjs` and `question-answer.mjs` to the hosted asset list. See [its contract](QUESTION_CHANNEL.md) for the separate plaintext release boundary.
+
+## Optional disclosure channels
+
+Storage v1 stays ciphertext-only. Separate [assigned-question](QUESTION_CHANNEL.md), [batch-question](BATCH_CHANNEL.md) and [selected-item](ITEM_SHARING.md) channels release only owner-approved copies. Their capability handshake is not server authorization. Hosts bind exact recipient/task scope, validate ownership, implement idempotent delivery and enforce revocation/expiry where their grant service supports it. See [TOPIC_MATCHING.md](TOPIC_MATCHING.md) for local deterministic autofill; it never authorizes disclosure.

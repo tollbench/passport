@@ -4,11 +4,11 @@
 
 Passport is an independent, open-source personal-information vault from Toll Bench. It encrypts information in your browser and lets you export selected information as a separately encrypted package. The standalone application runs locally without an account, AI provider, telemetry or cloud storage. A separate hosted client connects encrypted storage to an authenticated host through an isolated frame.
 
-**Status: 0.1.0a6, reference alpha. Not independently security-audited.** Includes the standalone reference application and a separate hosted client component. Use sample information while evaluating it. Standalone behavior is unchanged. See [hosted embedding and security responsibilities](docs/HOSTED.md).
+**Status: 0.1.0a10 release candidate, reference alpha. Not independently security-audited.** Includes the standalone reference application and a separate hosted client component. Use sample information while evaluating it. Standalone behavior is unchanged. See [hosted embedding and security responsibilities](docs/HOSTED.md).
 
 ## Run it
 
-Published alpha: `python -m pip install toll-passport==0.1.0a6`, then `toll-passport serve`. See the [verified release receipt](docs/RELEASE_RECEIPT.md).
+After this candidate is published: `python -m pip install toll-passport==0.1.0a10`, then `toll-passport serve`. See the [verified release receipt](docs/RELEASE_RECEIPT.md).
 
 Python 3.9 or later and a current browser with Web Crypto and IndexedDB are required. From a source checkout:
 
@@ -19,9 +19,9 @@ python -m pip install .
 toll-passport serve
 ```
 
-Open **http://127.0.0.1:8765**. Keep that exact address and port: browser storage is scoped to its origin. A different port or `localhost` is a different storage location. Install a released wheel with `python -m pip install path/to/toll_passport-0.1.0a6-py3-none-any.whl`. A GitHub release does not imply availability on PyPI; check the release notes.
+Open **http://127.0.0.1:8765**. Keep that exact address and port: browser storage is scoped to its origin. A different port or `localhost` is a different storage location. Install a released wheel with `python -m pip install path/to/toll_passport-0.1.0a10-py3-none-any.whl`. A GitHub release does not imply availability on PyPI; check the release notes.
 
-## What works
+## Standalone capabilities
 
 - Create a vault with an automatically generated encryption key.
 - Save notes, structured answers, optional labels and multiple files locally.
@@ -45,13 +45,13 @@ Files are limited to 25 MiB each; the encrypted snapshot is limited to 100 MiB. 
 
 ## Sharing
 
-Only explicitly selected fields are copied into a release. The original vault key is never used as the sharing key. Download the encrypted package and its separate package key, then deliver them through appropriate separate channels. Passport itself sends nothing.
+Only explicitly selected fields are copied into a release. The original vault key is never used as the sharing key. Download the encrypted package and its separate package key, then deliver them through appropriate separate channels. The standalone application sends nothing. This download flow is separate from hosted item and question disclosure channels.
 
-The recipient and purpose are authenticated package metadata, **not verified recipient identity or access control**. Anyone possessing the package and key can decrypt it. Downloads cannot be recalled, revoked or made to expire. Hosted grants, verified recipient keys and delivery authorization are later work, documented in [the integration boundary](docs/BOUNDARY.md).
+The recipient and purpose are authenticated package metadata, **not verified recipient identity or access control**. Anyone possessing the package and key can decrypt it. Downloads cannot be recalled, revoked or made to expire. The optional hosted channels release explicitly approved copies to an authenticated host. The host implements verified recipient authorization, grants, expiry and future-read revocation; the public client is not that authority. See [selected item sharing](docs/ITEM_SHARING.md) and [the integration boundary](docs/BOUNDARY.md).
 
 ## Optional question labels
 
-A question-producing application may suggest a stable question key. Subject, task reference and reuse scope come from trusted owner context. The reference UI accepts optional labels including unfamiliar ones. Recognized labels can find saved answers for matching context; the owner reviews candidates and explicitly chooses an answer to fill the form. Missing labels never prevent saving, fail an agent or affect a score. Answers remain private until selected for release. Automatic agent question intake remains separate work. [Question metadata contract](docs/QUESTION_LABELS.md).
+A question-producing application may suggest a stable question key. Subject, task reference and reuse scope come from trusted owner context. The reference UI accepts optional labels including unfamiliar ones. Recognized labels can find saved answers for matching context; the owner reviews candidates and explicitly chooses an answer to fill the form. Missing labels never prevent saving, fail an agent or affect a score. Answers remain private until selected for release. Hosted applications can supply bounded authenticated questions through the optional channels; intake and delivery authorization remain the host’s responsibility. [Question metadata contract](docs/QUESTION_LABELS.md).
 
 ## Development
 
@@ -74,10 +74,12 @@ Copyright 2026 **Steven Ochs and Tollbench**. Created for [Toll Bench](https://t
 
 This is newly authored Passport code. No Ente, Bitwarden or proprietary Toll Bench implementation was copied. Cryptographic primitives are supplied by Web Crypto; this is not a new encryption algorithm. See [security](SECURITY.md) and [format](docs/FORMAT.md) before extending the reference implementation.
 
-### Hosted extensions
+## Hosted capabilities
 
 The optional [batch question channel](docs/BATCH_CHANNEL.md) supports private drafts and uploads followed by explicit disclosure to one named recipient. [Trusted fixed panels](docs/PANELS.md) let a host add its own encrypted-book UI without publishing its business features. These interfaces do not grant agents access to the vault.
 
 The optional [deterministic topic catalog](docs/TOPIC_MATCHING.md) supports private
 entity-specific answer reuse with editable question chips and the existing Send
 action. Unknown hints do not fail questions or grant access to saved information.
+
+The optional [item picker and local source import helper](docs/ITEM_SHARING.md) support exact note/file selections, fixed folder snapshots, private uploads and repeat-safe source records. Encrypted intent persistence precedes explicit release. Item grants, operator flows, goals, CRM, connectors and provider-specific import conversion remain host features. Imported prose never silently becomes a classified fact.

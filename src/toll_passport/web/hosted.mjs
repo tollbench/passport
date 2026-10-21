@@ -16,7 +16,9 @@ import { connectQuestionHost } from './question-channel.mjs';
 import { mountQuestionAnswer } from './question-answer.mjs';
 import { connectBatchHost } from './question-batch-channel.mjs';
 import { mountQuestionBatch } from './question-batch.mjs';
-let questionPanel, batchPanel;
+import {connectItemHost} from './item-share-channel.mjs';
+import {mountItemPicker} from './item-picker.mjs';
+let questionPanel, batchPanel, itemPanel;
 const panels = new Map();
 let pendingPanel = /^#panel-[a-z][a-z0-9-]{0,63}$/.test(location.hash) ? location.hash.slice(1) : null;
 const $ = id => document.getElementById(id);
@@ -86,7 +88,7 @@ function status(message) {
 }
 
 function revealBook() {
-  if (batchPanel?.focus() || questionPanel?.focus()) return;
+  if (itemPanel?.focus() || batchPanel?.focus() || questionPanel?.focus()) return;
   if (activatePendingPanel()) return;
   for (const panel of panels.values()) if (!panel.root.hidden && panel.controller.focus?.()) return;
   const heading = $('book-heading');
@@ -155,7 +157,7 @@ async function run(fn) {
     document.querySelectorAll('form').forEach(f => f.inert = false);
     document.querySelectorAll('button,input[type=file]').forEach(b => b.disabled = false);
     $('vault-scope').disabled = !host || !!pendingCreation;
-    questionPanel?.refresh(); batchPanel?.refresh(); refreshPanels();
+    questionPanel?.refresh(); batchPanel?.refresh(); itemPanel?.refresh(); refreshPanels();
   }
 }
 
@@ -232,7 +234,7 @@ function downloadFile(f) {
 }
 
 function render() {
-  questionPanel?.refresh(); batchPanel?.refresh(); refreshPanels();
+  questionPanel?.refresh(); batchPanel?.refresh(); itemPanel?.refresh(); refreshPanels();
   const unlocked = !!key;
   $('welcome').hidden = !loaded || !!envelope || !!pendingCreation;
   $('creation').hidden = !pendingCreation;
@@ -628,4 +630,13 @@ void connectBatchHost().then(channel => {
     state: () => ({ document: key ? doc : null, scope }), save, run, filesValue
   });
   batchPanel.refresh();
+}).catch(() => {});
+
+// Optional item copies have their own approval channel; storage stays ciphertext-only.
+void connectItemHost().then(channel => {
+  if (!channel) return;
+  itemPanel = mountItemPicker($('item-sharing'), channel, {
+    state: () => ({document: key ? doc : null, scope}), save, run, filesValue
+  });
+  itemPanel.refresh();
 }).catch(() => {});
