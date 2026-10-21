@@ -1,5 +1,26 @@
 # Verified standalone alpha release
 
+## 2026-10-21 — Selected item copies and repeat-safe imports, 0.1.0a10
+
+Source/tag: [`f89d48a70a3f9935a4e87c042ef80bc0d4e6f7dc`](https://github.com/tollbench/passport/commit/f89d48a70a3f9935a4e87c042ef80bc0d4e6f7dc), `v0.1.0a10`.
+
+- [Exact-source CI](https://github.com/tollbench/passport/actions/runs/39693640778): passed both Python versions, 64 Node tests, 13 installed-wheel Python tests and all six installed-wheel browser families.
+- [Trusted Publishing](https://github.com/tollbench/passport/actions/runs/39694851821): succeeded through the existing tag-bound publisher; public PyPI provenance records contain an attestation bundle for each artifact.
+- [PyPI release](https://pypi.org/project/toll-passport/0.1.0a10/) and [GitHub prerelease](https://github.com/tollbench/passport/releases/tag/v0.1.0a10).
+
+Downloaded wheel and sdist from public PyPI matched the reviewed local build and publication-workflow artifacts byte for byte. All 23 packaged runtime files matched the tagged source, and all source-distribution files matched the source (generated package metadata checked separately). Version, Steven Ochs and Tollbench attribution, Apache-2.0 license/NOTICE and absence of runtime dependencies were verified. A fresh isolated installation of the downloaded public wheel passed all 13 Python tests and matched every runtime file. GitHub asset digests match the same wheel, sdist and SHA256SUMS.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `toll_passport-0.1.0a10-py3-none-any.whl` | `bb4ca2ac93d2762d58f32a3960c0b42f665630167ba6ae7dd395b247c58e65b0` |
+| `toll_passport-0.1.0a10.tar.gz` | `04f6cc315a41c3119a0e58ad4570574ca4b20ad2a0dc2b2d06a1c5848c210c88` |
+
+The version-specific JSON endpoint briefly returned 404 during propagation. Verification used public project JSON that explicitly identified version `0.1.0a10`, its two exact artifacts and expected hashes. No publishing credentials were read or changed and no new authority was granted.
+
+This generic release adds the owner-approved item picker/channel and repeat-safe local import primitives described in ITEM_SHARING.md. Host authentication, grant storage, agent reads, revocation and quotas remain host duties. Tollbench's private flow builder, goals, contacts and marketplace are not distributed. No staging or production application deployment occurred in this release task. The exact integration pin is `toll-passport==0.1.0a10`; installation is a separate reviewed operation.
+
+## Historical standalone release 0.1.0a2
+
 Version: **0.1.0a2**. Source commit: `672490026ec5d8cffba4d16f005a62e891ad349a`.
 
 - Public repository: https://github.com/tollbench/passport
