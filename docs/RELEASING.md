@@ -1,6 +1,6 @@
 # Releasing Passport
 
-Canonical repository: https://github.com/tollbench/passport . Distribution: `toll-passport`. Prepared release version: `0.1.0a5`. GitHub releases and PyPI availability are separate receipts.
+Canonical repository: https://github.com/tollbench/passport . Distribution: `toll-passport`. Current release version: `0.1.0a5`. GitHub releases and PyPI availability are separate receipts.
 
 1. Review public boundary, source provenance, LICENSE, NOTICE, citation and dependency changes. Run tests and build/install the wheel, including browser assets. Inspect wheel/sdist contents for private material.
 2. Commit reviewed changes, wait for CI, create a matching `v0.1.0a5` tag and mark the GitHub release as a prerelease. Attach the inspected wheel, sdist and SHA256SUMS.

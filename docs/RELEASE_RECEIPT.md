@@ -55,3 +55,25 @@ Coordinator and independent review passed after the optional-reference hint corr
 | `toll_passport-0.1.0a4.tar.gz` | `cca81114970798249748ed54374d22bd062be7c7e16f4e2282ff7104926c4cd6` |
 
 Verified public version/author metadata, the new answers.mjs asset, ownership notice and all wheel runtime bytes against tagged source. A fresh public PyPI wheel download matched CI byte for byte, installed in an isolated environment and reported `toll-passport 0.1.0a4`. Full suites were not repeated after CI. GitHub prerelease contains the identical wheel, sdist and SHA256SUMS. Older releases and receipts remain intact. No production or staging application writes occurred.
+
+## 2026-10-20 — Hosted client release 0.1.0a5
+
+Version: **0.1.0a5**. Source commit: `dc1da7be766932c175ab43c107e65b438df6feea`. Ownership: **Steven Ochs and Tollbench**.
+
+- GitHub prerelease: https://github.com/tollbench/passport/releases/tag/v0.1.0a5
+- PyPI: https://pypi.org/project/toll-passport/0.1.0a5/
+- Successful CI: https://github.com/tollbench/passport/actions/runs/39521985931
+- Successful Trusted Publishing: https://github.com/tollbench/passport/actions/runs/39522175399
+
+The separate hosted entry point uses the unchanged public vault cryptography and saved-answer modules. An opaque sandbox keeps unlocked information within the client. Its strictly validated bridge handles only encrypted v1 snapshots and storage metadata, with parent source/origin checks, nonce/capability initialization, correlated replies and expected ETags. Recovery download acknowledgement precedes creation. The client supports notes, files, answers, explicit reuse, export/restore/removal, and separate account-owned personal/business scopes. Save failures/conflicts retain form input without reporting success. Business team key sharing, automatic agent intake and independent security certification are not included; host authorization and storage responsibilities are documented in HOSTED.md.
+
+Coordinator review approved the scoped public source before publication. CI passed Python 3.9 and 3.13, 21 Node tests, 13 Python server tests, all eight packaged assets, and both standalone and hosted Chromium acceptance. Local hosted acceptance also verified actual opaque-frame isolation, recovery-before-persistence, encrypted storage/messages, failure/conflict and scope behavior, tampered ciphertext and wrong-key rejection, CSP network blocking and mobile layout. Tests used synthetic data and no paid model/provider calls.
+
+The tag-bound publication workflow passed. Downloaded public PyPI wheel and sdist matched the CI artifacts byte for byte and the public version metadata hashes. GitHub prerelease asset digests agree:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `toll_passport-0.1.0a5-py3-none-any.whl` | `ceddeae445006516c67aff5814e63421b275513e515c23fa8037dac4fb8630bc` |
+| `toll_passport-0.1.0a5.tar.gz` | `34984a91703a98c8dd8a3a64089c678cd2241ee0c8b3e6b8cc630602ea510e12` |
+
+Verified all wheel/sdist runtime bytes against the reviewed source, including hosted assets, author metadata and NOTICE. A fresh isolated installation of the exact wheel downloaded from public PyPI reported `toll-passport 0.1.0a5`; every installed runtime file matched the reviewed source. Full suites were not repeated after CI. GitHub prerelease contains the verified wheel, sdist and SHA256SUMS. Earlier versions, tags and receipts remain intact. No private application source, credential files or real user data are included. No staging or production application deployment occurred in this release task.
