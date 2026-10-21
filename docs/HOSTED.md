@@ -96,9 +96,10 @@ promise erasure from operator backups.
 
 Personal and business are separate encrypted snapshots owned by the current
 account. **This component does not implement team key distribution, business
-membership sharing or automatic agent intake.** Saved-answer suggestions stay
-local and require explicit selection. Selected sharing produces independently
-encrypted download files; it does not send messages or grant online access.
+membership sharing.** Saved-answer suggestions stay
+local and require explicit selection. Selected file sharing produces independently encrypted downloads. The optional
+[question channel](QUESTION_CHANNEL.md) separately supports one host-bound text
+answer, only after an explicit owner confirmation. It is not automatic sharing.
 
 ## Verification
 
@@ -114,3 +115,5 @@ and mobile layout. Set `PASSPORT_CHROME` to an installed Chromium executable if
 needed. No production services, model calls or paid providers are involved.
 
 Copyright 2026 Steven Ochs and Tollbench. Apache-2.0.
+
+The optional question channel adds `question-channel.mjs` and `question-answer.mjs` to the hosted asset list. See [its contract](QUESTION_CHANNEL.md) for the separate plaintext release boundary.

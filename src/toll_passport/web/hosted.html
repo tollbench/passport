@@ -6,6 +6,13 @@
 
 <main>
 <section class="card book-page">
+<section id="agent-question" class="question-card" hidden>
+<div class="eyebrow">ANSWER A WORK CARD</div><h2 data-question-title tabindex="-1"></h2><p data-question-recipient></p>
+<p data-question-locked>Open the requested book to use saved answers. Nothing is shared while it is locked.</p>
+<div data-question-editor hidden><div data-question-candidates></div><label>Your private answer<textarea maxlength="2000" rows="4"></textarea></label>
+<label><input type="checkbox" data-question-reusable> Also remember this answer for future tasks about this subject</label>
+<p>Your answer saves privately before you choose whether to send it.</p><button type="button" data-question-review>Review answer for agent</button></div>
+<p data-question-feedback role="status" aria-live="polite"></p></section>
 <section id="book-intro">
 <div class="eyebrow">YOUR PRIVATE INFORMATION
 </div><h1>A book of your own.</h1><p class="intro">Your story, your business, and the information that matters to you. Keep it together. Choose the pieces you share.</p><p class="book-promise">Saving your book does not send its contents to AI providers. The host stores encrypted data; your key stays with you.</p>

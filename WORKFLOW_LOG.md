@@ -87,3 +87,27 @@ Current state: reviewed local candidate, publication pending coordinator review 
 Coordinator reviewed the public/private diffs and fixture screenshot, requested stronger visible AI-provider privacy copy and removal of the host's redundant ready-success banner, then approved canonical a6 publication after verification. Primary copy now states that saving does not send contents to AI providers, the host stores encrypted data, and the key stays with the owner. The host banner correction is private-app-only. Final hosted and native-feed browser checks pass. Publication uses the existing tag-bound Trusted Publisher workflow; staging remains on hold during the owner's private import/export.
 
 Published a6 at canonical source 0987eee after CI39533895595 passed both supported Python versions and standalone/hosted browser acceptance. Trusted Publishing39534034369 succeeded. Public PyPI wheel/sdist match CI artifacts, exact tagged runtime and public metadata hashes; fresh isolated wheel installation reportsa6. GitHub prerelease contains the same artifacts and checksum file. Release links/hashes are committed in docs/RELEASE_RECEIPT.md. No staging writes or live reload; coordinator holds deployment until the owner's private import/export is complete.
+
+## Optional assigned question channel — 0.1.0a7 candidate
+
+Requested: private saved-answer reuse for a host-bound question, with explicit
+selected release. Direct worker passport_feed_and_asset_fix after Steven retired
+Jev; no Factory claim. Added a separate strict question protocol and private
+controller; existing ciphertext protocol, encryption and document format unchanged.
+Owner-visible named recipient and exact answer confirmation follows successful
+encrypted save. Unknown/missing labels stay non-punitive. Scope, version, expiry,
+lock and stale async guards preserve the approval boundary.
+
+Parent reviewed the contract, transport, focus, failures and screenshots. Corrected
+question focus after unlock, exact attempted-receipt retry after expiry, optional
+host timing, modal cancellation on lock and a card-sized scrollable dialog. Tests:
+30 Node and 13 Python pass; ordinary hosted browser and new question browser pass,
+including 2000-character mobile confirmation and reachable buttons. CI now runs
+new acceptance against installed package resources. Separately reviewed private
+host integration has 47 Python/7 Node tests, a composed browser flow and three
+actual PostgreSQL race checks; no private code or data is included in this repo.
+
+Local build initially blocked by dependency network sandbox; normal isolated
+pinned Hatchling build succeeded after approved network execution. Twine checks
+pass. Publication is pending final source/CI gate, not claimed here. No live
+application deployment or provider/model calls occurred.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0a7
+
+- Optional hosted text-question channel with private saved-answer suggestions and explicit exact-answer release.
+- Encrypted save before approval, named recipient confirmation, scope/version/expiry checks and idempotent retry contract.
+- Added transport and browser acceptance; ciphertext storage protocol and cryptography unchanged.
+
 ## 0.1.0a6
 
 Make the hosted client read as a private book inside its host card: remove the standalone header, foreground personal/business information, add chapter navigation to existing information, files and saved-answer sections, and reveal/focus the opened book after creation, unlocking and restoration. Keep recovery/export controls secondary and preserve explicit recovery acknowledgement. The encrypted v1 format, storage bridge, deterministic matching and standalone application behavior are unchanged. No automatic agent sharing or independent security audit is implied.

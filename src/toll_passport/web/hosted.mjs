@@ -12,6 +12,9 @@ import {
 } from './vault.mjs';
 import { findAnswerCandidates } from './answers.mjs';
 import { connectHost } from './hosted-bridge.mjs';
+import { connectQuestionHost } from './question-channel.mjs';
+import { mountQuestionAnswer } from './question-answer.mjs';
+let questionPanel;
 const $ = id => document.getElementById(id);
 let key, doc, envelope, host, scope, etag = null, pendingCreation, loaded = false, sharing, receivedEnvelope, receivedRecovery, busy = false,
   recoverySaved = false,
@@ -48,6 +51,7 @@ function status(message) {
 }
 
 function revealBook() {
+  if (questionPanel?.focus()) return;
   const heading = $('book-heading');
   heading.focus({ preventScroll: true });
   heading.closest('.book-open-heading').scrollIntoView({ block: 'start', behavior: 'instant' });
@@ -108,6 +112,7 @@ async function run(fn) {
     document.querySelectorAll('form').forEach(f => f.inert = false);
     document.querySelectorAll('button,input[type=file]').forEach(b => b.disabled = false);
     $('vault-scope').disabled = !host || !!pendingCreation;
+    questionPanel?.refresh();
   }
 }
 
@@ -181,6 +186,7 @@ function downloadFile(f) {
 }
 
 function render() {
+  questionPanel?.refresh();
   const unlocked = !!key;
   $('welcome').hidden = !loaded || !!envelope || !!pendingCreation;
   $('creation').hidden = !pendingCreation;
@@ -558,3 +564,12 @@ await run(async () => {
   $('vault-scope').value = scope;
   await reloadVault();
 });
+
+// The optional question channel is independent of ciphertext storage and does not delay opening a book.
+void connectQuestionHost().then(channel => {
+  if (!channel) return;
+  questionPanel = mountQuestionAnswer($('agent-question'), channel, {
+    state: () => ({ document: key ? doc : null, scope }), save, run
+  });
+  questionPanel.refresh();
+}).catch(() => {});

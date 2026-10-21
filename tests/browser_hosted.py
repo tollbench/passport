@@ -8,7 +8,8 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
-ASSETS = Path(__file__).resolve().parents[1] / 'src/toll_passport/web'
+from importlib.resources import files
+ASSETS = Path(str(files('toll_passport').joinpath('web')))
 HOST = '''<!doctype html><title>Synthetic Passport host</title><link rel=icon href=data:,><style>html,body{margin:0;height:100%;overflow:hidden}iframe{display:block}</style><iframe id="vault" sandbox="allow-scripts allow-downloads" src="/hosted.html" style="width:100%;height:100vh;border:0"></iframe><script type="module">
 import {PROTOCOL,validateReady,validateRequest,validateInit,validateResult} from './hosted-bridge.mjs';
 const frame=document.querySelector('iframe');
@@ -151,7 +152,7 @@ with tempfile.TemporaryDirectory(prefix='passport-hosted-') as tmp, ThreadingHTT
     page.set_viewport_size({'width':1100,'height':1000})
     page.screenshot(path=str(Path(tempfile.gettempdir())/'passport-hosted-desktop.png'),full_page=True)
     assert not errors,errors
-    allowed={'/host','/hosted.html','/style.css','/hosted.mjs','/hosted-bridge.mjs','/vault.mjs','/answers.mjs'}
+    allowed={'/host','/hosted.html','/style.css','/hosted.mjs','/hosted-bridge.mjs','/vault.mjs','/answers.mjs','/question-channel.mjs','/question-answer.mjs'}
     assert all(method=='GET' and url.removeprefix(base) in allowed for method,url in requests if not url.startswith('https://example.invalid')),requests
     assert all(secret not in json.dumps(page.evaluate("Object.values(localStorage)")) for secret in secrets)
     print('PASS hosted: opaque sandbox, recovery-before-create, encrypted persistence, notes/files/answers/reuse, selected export, conflict/failure draft retention, scope consent+clearing, backup restore, delete isolation, reload/recovery, tamper/wrong-key rejection, ciphertext-only bridge/storage, CSP network block, mobile layout, no unexpected requests or page errors')

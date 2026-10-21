@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "toll-passport"
-version = "0.1.0a6"
+version = "0.1.0a7"
 description = "An independent, owner-controlled information vault from Toll Bench"
 readme = "README.md"
 requires-python = ">=3.9"
