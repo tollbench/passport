@@ -22,7 +22,7 @@ Review caught and corrected stale share downloads after selection changes, stale
 
 ## a8 candidate: batch disclosure and fixed panels
 
-The public contract suite has 40 passing Node tests. The fresh installed wheel
+The public contract suite has 41 passing Node tests. The fresh installed wheel
 passed 13 Python server/CLI tests plus standalone, hosted, single-question and
 batch/addon browser acceptance. The batch fixture uses only synthetic records and
 opaque iframe traffic; it verifies exact selected answers/files, no draft/key

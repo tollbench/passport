@@ -12,7 +12,10 @@ exact task/question versions, named recipient and a readable `purpose` describin
 all action side effects. Text, single choice, multiple choice and yes/no questions
 are supported. Unknown or missing labels never penalize an agent. Saved text
 suggestions are matched locally by exact subject/task and known labels. Dated or
-ambiguous matches require review. Provenance remains encrypted in the book.
+ambiguous matches require review. For unknown/missing labels, text questions can
+offer an exact question-text match (case/whitespace normalization only), with the
+same owner/task boundaries and mandatory manual selection. No fuzzy match or
+classifier is used. Provenance remains encrypted in the book.
 
 Each question accepts private uploads. Review first saves meaningful answers,
 files and an approval candidate through the existing encrypted storage channel.

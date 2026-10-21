@@ -1,6 +1,6 @@
 // Copyright 2026 Steven Ochs and Tollbench. SPDX-License-Identifier: Apache-2.0
 import { addEntry } from './vault.mjs';
-import { findAnswerCandidates } from './answers.mjs';
+import { findAnswerCandidates, canonicalAnswerLabel, ANSWER_REVIEW_AGE_DAYS } from './answers.mjs';
 import { validateBatchAnswers, validValue, fileBytes } from './question-batch-channel.mjs';
 const clone = value => JSON.parse(JSON.stringify(value));
 const signature = value => JSON.stringify(value);
@@ -13,8 +13,24 @@ export class QuestionBatch {
     return state.document;
   }
   candidates(q) {
-    return findAnswerCandidates(this.current(),{label:q.label,subject:this.channel.context.subject,scope:'task',taskId:this.channel.context.taskId})
-      .filter(c=>['short_answer','written_response'].includes(q.format) && validValue(q,c.answer));
+    if (!['short_answer','written_response'].includes(q.format)) return [];
+    const document=this.current(),context=this.channel.context;
+    if (canonicalAnswerLabel(q.label)) return findAnswerCandidates(document,{label:q.label,subject:context.subject,scope:'task',taskId:context.taskId}).filter(c=>validValue(q,c.answer));
+    // Missing/unknown labels get only an exact text fallback, always owner-reviewed.
+    const normalize=value=>typeof value==='string'?value.trim().replace(/\s+/g,' ').toLowerCase():'';
+    const candidates=[];
+    for(const entry of document.entries){
+      const v=entry.versions.at(-1),f=v.fields,question=typeof f.question==='string'?f.question:v.title;
+      if(v.kind!=='answer'||!validValue(q,f.answer)||f.subject!==context.subject||
+          !['task','reusable'].includes(f.scope)||(f.scope==='task'&&f.taskId!==context.taskId)||normalize(question)!==normalize(q.title))continue;
+      const reviewReasons=['unlabelled-exact-question'],age=Date.now()-Date.parse(v.createdAt);
+      if(age>ANSWER_REVIEW_AGE_DAYS*86400000)reviewReasons.push('dated');
+      if(age<0)reviewReasons.push('future-date');
+      candidates.push({answer:f.answer,provenance:{entryId:entry.id,version:v.version,createdAt:v.createdAt,question,label:null,subject:f.subject,scope:f.scope,...(f.scope==='task'?{taskId:f.taskId}:{})},reviewReasons});
+    }
+    candidates.sort((a,b)=>b.provenance.createdAt.localeCompare(a.provenance.createdAt)||a.provenance.entryId.localeCompare(b.provenance.entryId));
+    if(candidates.length>1)candidates.forEach(c=>c.reviewReasons.push('multiple-candidates'));
+    return candidates;
   }
   valid(answers, expired = false) {
     const doc=this.current(expired), p=this.prepared;
