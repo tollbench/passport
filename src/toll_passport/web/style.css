@@ -9,3 +9,16 @@
 .hosted-book .question-card dialog h2 { margin-top: 0; }
 .hosted-book .question-card dialog pre { max-height: 35dvh; overflow-y: auto; }
 @media(max-width:500px) { .hosted-book .question-card dialog { padding: 20px; border-radius: 20px; } }
+
+/* Batch drafts and extension content stay inside the opaque book. */
+.batch-question { border-top: 1px solid var(--border, #ddd); padding: 1rem 0; }
+.batch-question label { display: block; margin: .65rem 0; }
+.batch-question input[type="checkbox"], .batch-question input[type="radio"] { width: auto; margin-right: .5rem; }
+.extension-panel { margin: 1rem 0; }
+#agent-question-batch dialog { box-sizing: border-box; width: min(42rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: hidden; border: 1px solid #ddd; border-radius: 1rem; padding: 1.5rem; }
+#agent-question-batch dialog pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.batch-question input[type="radio"], .batch-question input[type="checkbox"] { display: inline-block; padding: 0; margin: 0 .5rem 0 0; vertical-align: middle; border: initial; background: initial; appearance: auto; }
+
+#agent-question-batch .batch-review-body { max-height: min(55dvh, calc(100dvh - 16rem)); overflow-y: auto; }
+#agent-question-batch .batch-review-actions { display:flex; flex-wrap:wrap; gap:.5rem; background:white; border-top:1px solid var(--line); padding-top:.5rem; }
+#agent-question-batch .batch-review-actions button { flex:1 1 auto; }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0a8
+
+- Optional generic batch question channel with bounded choices, private uploads, saved-answer provenance and explicit named-recipient release of selected answers/files.
+- Trusted fixed in-frame panels can use encrypted generic records through revision-guarded saves; lock clears their visible content. No dynamic plugin loading or host access to private drafts.
+- Existing storage/single-question protocols and encrypted format remain unchanged. Added opaque-browser, transport, file-limit and lifecycle gates. Host-specific goals, marketplace selection and delivery remain outside this package.
+
 ## 0.1.0a7
 
 - Optional hosted text-question channel with private saved-answer suggestions and explicit exact-answer release.

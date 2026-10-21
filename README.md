@@ -73,3 +73,7 @@ Node 22 is used for core tests. Browser checks use Playwright as a development-o
 Copyright 2026 **Steven Ochs and Tollbench**. Created for [Toll Bench](https://tollbench.com). Licensed under [Apache-2.0](LICENSE); preserve [NOTICE](NOTICE) with redistributions as applicable. This license applies to Passport's included source, not the private Toll Bench application or its trademarks. See [third-party notices](THIRD_PARTY_NOTICES.md) and [citation metadata](CITATION.cff).
 
 This is newly authored Passport code. No Ente, Bitwarden or proprietary Toll Bench implementation was copied. Cryptographic primitives are supplied by Web Crypto; this is not a new encryption algorithm. See [security](SECURITY.md) and [format](docs/FORMAT.md) before extending the reference implementation.
+
+### Hosted extensions
+
+The optional [batch question channel](docs/BATCH_CHANNEL.md) supports private drafts and uploads followed by explicit disclosure to one named recipient. [Trusted fixed panels](docs/PANELS.md) let a host add its own encrypted-book UI without publishing its business features. These interfaces do not grant agents access to the vault.

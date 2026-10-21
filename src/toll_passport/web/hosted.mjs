@@ -14,7 +14,11 @@ import { findAnswerCandidates } from './answers.mjs';
 import { connectHost } from './hosted-bridge.mjs';
 import { connectQuestionHost } from './question-channel.mjs';
 import { mountQuestionAnswer } from './question-answer.mjs';
-let questionPanel;
+import { connectBatchHost } from './question-batch-channel.mjs';
+import { mountQuestionBatch } from './question-batch.mjs';
+let questionPanel, batchPanel;
+const panels = new Map();
+let pendingPanel = /^#panel-[a-z][a-z0-9-]{0,63}$/.test(location.hash) ? location.hash.slice(1) : null;
 const $ = id => document.getElementById(id);
 let key, doc, envelope, host, scope, etag = null, pendingCreation, loaded = false, sharing, receivedEnvelope, receivedRecovery, busy = false,
   recoverySaved = false,
@@ -22,6 +26,37 @@ let key, doc, envelope, host, scope, etag = null, pendingCreation, loaded = fals
   filledAnswer = null, renderedAnswerSignature = null;
 const MAX_FILE = 25 * 1024 * 1024,
   MAX_IMPORT = 145 * 1024 * 1024;
+
+/** Trusted fixed modules inside this opaque page only; never a URL/plugin loader.
+ * No encryption key or parent-window access is exposed by this local API.
+ */
+export function registerPanel({ id, label, mount }) {
+  if (!/^[a-z][a-z0-9-]{0,63}$/.test(id) || panels.has(id) || typeof label !== 'string' ||
+      !label.trim() || label.length > 100 || typeof mount !== 'function') throw Error('invalid');
+  const root = document.createElement('section'); root.id = `panel-${id}`; root.className = 'extension-panel';
+  const link = document.createElement('a'); link.href = `#${root.id}`; link.textContent = label;
+  root.tabIndex = -1; $('extension-panels').append(root); document.querySelector('.book-contents').append(link);
+  const api = { root, getState: () => ({ document: key ? doc : null, scope }), run,
+    save: (next, expected) => {
+      if (!expected || expected.vaultId !== doc?.vaultId || expected.revision !== doc?.revision || expected.scope !== scope || !key) return Promise.reject(Error('conflict'));
+      return save(next, expected);
+    } };
+  const panel = { root, controller: mount(api) || {} }; panels.set(id, panel);
+  refreshPanels();
+  if (key && pendingPanel === root.id) activatePendingPanel();
+}
+function activatePendingPanel() {
+  const panel = [...panels.values()].find(p => p.root.id === pendingPanel);
+  if (!key || !panel) return false;
+  pendingPanel = null; panel.controller.activate?.(); panel.root.focus({ preventScroll: true }); panel.root.scrollIntoView({ block: 'start', behavior: 'instant' }); return true;
+}
+function refreshPanels() {
+  for (const panel of panels.values()) {
+    panel.root.hidden = !key;
+    try { panel.controller.refresh?.(); if (!key) panel.root.replaceChildren(); }
+    catch { panel.root.replaceChildren(); panel.root.hidden = true; }
+  }
+}
 
 function invalidateShare() {
   shareGeneration++;
@@ -51,7 +86,9 @@ function status(message) {
 }
 
 function revealBook() {
-  if (questionPanel?.focus()) return;
+  if (batchPanel?.focus() || questionPanel?.focus()) return;
+  if (activatePendingPanel()) return;
+  for (const panel of panels.values()) if (!panel.root.hidden && panel.controller.focus?.()) return;
   const heading = $('book-heading');
   heading.focus({ preventScroll: true });
   heading.closest('.book-open-heading').scrollIntoView({ block: 'start', behavior: 'instant' });
@@ -61,7 +98,13 @@ document.querySelector('.book-contents').addEventListener('click', event => {
   const link = event.target.closest('a');
   if (!link) return;
   event.preventDefault();
-  const heading = $(link.hash.slice(1));
+  const targetId = link.hash.slice(1);
+  for (const panel of panels.values()) {
+    if (panel.root.id === targetId) panel.controller.activate?.();
+    else panel.controller.deactivate?.();
+  }
+  const heading = $(targetId);
+  if (!heading) return;
   heading.focus({ preventScroll: true });
   heading.scrollIntoView({ block: 'start', behavior: 'instant' });
 });
@@ -112,7 +155,7 @@ async function run(fn) {
     document.querySelectorAll('form').forEach(f => f.inert = false);
     document.querySelectorAll('button,input[type=file]').forEach(b => b.disabled = false);
     $('vault-scope').disabled = !host || !!pendingCreation;
-    questionPanel?.refresh();
+    questionPanel?.refresh(); batchPanel?.refresh(); refreshPanels();
   }
 }
 
@@ -126,15 +169,18 @@ async function persist(next) {
     next ? { envelope: next, expectedEtag: etag } : { expectedEtag: etag });
   etag = result.etag;
 }
-async function save(next) {
-  const sealed = await sealVault(next, key);
-  await persist(sealed);
-  doc = next;
-  envelope = sealed;
-  clearTransient();
-  render();
-  status('Saved privately. Your information is in your book.');
-  revealBook();
+async function save(next, expected = null) {
+  if (!key || !doc || next.vaultId !== doc.vaultId || next.revision <= doc.revision ||
+      expected && (expected.vaultId !== doc.vaultId || expected.revision !== doc.revision || expected.scope !== scope)) throw Error('conflict');
+  const before = { key, doc, scope, etag };
+  const unchanged = () => key === before.key && doc === before.doc && scope === before.scope && etag === before.etag;
+  const sealed = await sealVault(next, before.key);
+  if (!unchanged()) throw Error('conflict');
+  const result = await host.request('save', before.scope, { envelope: sealed, expectedEtag: before.etag });
+  if (!unchanged()) throw Error('conflict');
+  etag = result.etag; doc = next; envelope = sealed;
+  clearTransient(); render();
+  status('Saved privately. Your information is in your book.'); revealBook();
 }
 
 function download(data, name, type = 'application/json') {
@@ -186,7 +232,7 @@ function downloadFile(f) {
 }
 
 function render() {
-  questionPanel?.refresh();
+  questionPanel?.refresh(); batchPanel?.refresh(); refreshPanels();
   const unlocked = !!key;
   $('welcome').hidden = !loaded || !!envelope || !!pendingCreation;
   $('creation').hidden = !pendingCreation;
@@ -211,6 +257,7 @@ function render() {
   if (!doc.entries.length) list.append(node('p',
     'A story, a preference, a project, a useful document. Add the information you want to keep here.', 'book-empty'));
   for (const entry of doc.entries) {
+    if ([...panels.values()].some(p => p.controller.ownsEntry?.(entry))) continue;
     const v = entry.versions.at(-1),
       card = node('article', undefined, 'record');
     card.append(node('h3', v.title), node('p',
@@ -572,4 +619,13 @@ void connectQuestionHost().then(channel => {
     state: () => ({ document: key ? doc : null, scope }), save, run
   });
   questionPanel.refresh();
+}).catch(() => {});
+
+// Batch release is optional and never exposes private drafts through the storage bridge.
+void connectBatchHost().then(channel => {
+  if (!channel) return;
+  batchPanel = mountQuestionBatch($('agent-question-batch'), channel, {
+    state: () => ({ document: key ? doc : null, scope }), save, run, filesValue
+  });
+  batchPanel.refresh();
 }).catch(() => {});
