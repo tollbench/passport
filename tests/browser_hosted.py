@@ -71,10 +71,17 @@ with tempfile.TemporaryDirectory(prefix='passport-hosted-') as tmp, ThreadingHTT
     expect(f.locator('#creation')).to_be_visible()
     assert not page.evaluate("receipts.some(q=>q.op==='save')")
     f.locator('#confirm-create').click();expect(f.locator('#book')).to_be_visible()
+    expect(f.locator('#book-intro')).to_be_hidden()
+    expect(f.locator('#book-heading')).to_be_focused()
+    assert f.locator('body > header').count() == 0
+    expect(f.locator('.book-contents')).to_be_visible()
+    f.get_by_role('link',name='02 Your files').click()
+    expect(f.locator('#files-chapter')).to_be_focused()
+    f.get_by_role('link',name='01 Your information').click()
     assert page.evaluate("receipts.filter(q=>q.op==='save').length")==1
     f.locator('#entry-form [name=title]').fill('PRIVATE_TITLE_CANARY')
     f.locator('#entry-form [name=content]').fill('PRIVATE_BODY_CANARY')
-    f.locator('#entry-form button').click();expect(f.locator('#status')).to_contain_text('snapshot saved')
+    f.locator('#entry-form button').click();expect(f.locator('#status')).to_contain_text('Saved privately')
     f.locator('#upload').set_input_files({'name':'private-file.txt','mimeType':'text/plain','buffer':b'PRIVATE_FILE_CANARY'})
     expect(f.locator('#entries')).to_contain_text('private-file.txt')
     question=f.locator('#question-form')
@@ -111,6 +118,8 @@ with tempfile.TemporaryDirectory(prefix='passport-hosted-') as tmp, ThreadingHTT
     expect(f.locator('#answer-suggestions')).to_be_empty();expect(f.locator('#share-preview')).to_be_empty()
     f.locator('#vault-scope').select_option('personal');expect(f.locator('#locked')).to_be_visible()
     f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#entries')).to_contain_text('PRIVATE_BODY_CANARY')
+    expect(f.locator('#book-heading')).to_be_focused()
+    f.locator('#book-tools > summary').click()
     # Backup + recovery restore into empty business scope, with no host key exposure.
     with page.expect_download() as d:f.locator('#backup').click()
     backup=Path(tmp)/'backup.json';d.value.save_as(backup)

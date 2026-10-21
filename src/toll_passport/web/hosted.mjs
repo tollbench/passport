@@ -47,6 +47,21 @@ function status(message) {
   $('status').textContent = message;
 }
 
+function revealBook() {
+  const heading = $('book-heading');
+  heading.focus({ preventScroll: true });
+  heading.closest('.book-open-heading').scrollIntoView({ block: 'start', behavior: 'instant' });
+}
+
+document.querySelector('.book-contents').addEventListener('click', event => {
+  const link = event.target.closest('a');
+  if (!link) return;
+  event.preventDefault();
+  const heading = $(link.hash.slice(1));
+  heading.focus({ preventScroll: true });
+  heading.scrollIntoView({ block: 'start', behavior: 'instant' });
+});
+
 function node(tag, text, cls) {
   const n = document.createElement(tag);
   if (text !== undefined) n.textContent = text;
@@ -86,6 +101,8 @@ async function run(fn) {
       'Save not confirmed: this vault changed elsewhere. Your input is still here. Export a backup if needed, then reload the saved vault and unlock again.' :
       err.message === 'quota' ? 'Save not confirmed: host storage quota reached. Your input is still here.' :
       'Action not confirmed. Check your recovery file or host connection. A timed-out write may have reached storage; reload before retrying.');
+    $('status').focus({ preventScroll: true });
+    $('status').scrollIntoView({ block: 'start', behavior: 'instant' });
   } finally {
     busy = false;
     document.querySelectorAll('form').forEach(f => f.inert = false);
@@ -111,7 +128,8 @@ async function save(next) {
   envelope = sealed;
   clearTransient();
   render();
-  status('Encrypted snapshot saved to your hosted vault. Export a backup to preserve a separate copy.');
+  status('Saved privately. Your information is in your book.');
+  revealBook();
 }
 
 function download(data, name, type = 'application/json') {
@@ -169,6 +187,7 @@ function render() {
   $('reload-vault').hidden = !host || !!pendingCreation;
   $('locked').hidden = !envelope || unlocked;
   $('book').hidden = !unlocked;
+  $('book-intro').hidden = unlocked;
   if (!unlocked) {
     $('entries').replaceChildren();
     $('received').replaceChildren();
@@ -179,10 +198,12 @@ function render() {
   }
   $('usage').textContent =
     `${doc.entries.length} records · ${(envelope.ciphertext.length*3/4/1024/1024).toFixed(2)} MiB encrypted · Recovery file ${recoverySaved?'download requested':'needed for future unlocking'}`;
+  $('book-heading').textContent = scope === 'business' ? 'Your business book' : 'Your personal book';
+  $('book-count').textContent = doc.entries.length ? `${doc.entries.length} saved ${doc.entries.length === 1 ? 'item' : 'items'} · Private to you` : 'Your book is open. Start with something about you or your business.';
   const list = $('entries');
   list.replaceChildren();
   if (!doc.entries.length) list.append(node('p',
-    'Your book is ready. Add information, an answer or files.', 'muted'));
+    'A story, a preference, a project, a useful document. Add the information you want to keep here.', 'book-empty'));
   for (const entry of doc.entries) {
     const v = entry.versions.at(-1),
       card = node('article', undefined, 'record');
@@ -190,7 +211,7 @@ function render() {
       `Version ${v.version} · ${new Date(v.createdAt).toLocaleDateString()}`, 'muted'));
     for (const t of v.tags || []) card.append(node('span', t, 'tag'));
     for (const [field, value] of Object.entries(v.fields)) {
-      card.append(node('p', `${field}: ${typeof value==='string'?value:JSON.stringify(value)}`));
+      card.append(node('p', `${field === 'content' ? '' : field + ': '}${typeof value==='string'?value:JSON.stringify(value)}`));
     }
     for (const f of v.files || []) card.append(button(`Download ${f.name}`, () => downloadFile(f)));
     card.append(button('Choose what to share', () => startShare(entry.id, v)), button('Remove',
@@ -208,6 +229,8 @@ async function create() {
   pendingCreation = await createVault();
   render();
   await creationRecovery();
+  $('creation-heading').focus({ preventScroll: true });
+  $('creation-heading').scrollIntoView({ block: 'start', behavior: 'instant' });
 }
 async function creationRecovery() {
   download(await exportRecovery(pendingCreation.key, pendingCreation.document.vaultId), 'passport-recovery.json');
@@ -222,6 +245,7 @@ $('confirm-create').addEventListener('click', () => run(async () => {
   key = pendingCreation.key; doc = pendingCreation.document; envelope = pendingCreation.envelope;
   pendingCreation = null; recoverySaved = true;
   render(); status('Passport created. Only its encrypted snapshot was saved to the host.');
+  revealBook();
 }));
 async function recovery() {
   download(await exportRecovery(key, doc.vaultId), 'passport-recovery.json');
@@ -263,6 +287,7 @@ async function restore(file) {
     clearTransient();
     render();
     status('Backup restored and unlocked.');
+    revealBook();
   }), {
     once: true
   });
@@ -314,7 +339,8 @@ $('unlock').addEventListener('change', e => run(async () => {
   recoverySaved = true;
   e.target.value = '';
   render();
-  status('Unlocked locally.');
+  status('Your book is open.');
+  revealBook();
 }));
 for (const id of ['restore', 'restore-open']) $(id).addEventListener('change', e => run(() =>
   restore(e.target.files[0])));

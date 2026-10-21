@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0a6
+
+Make the hosted client read as a private book inside its host card: remove the standalone header, foreground personal/business information, add chapter navigation to existing information, files and saved-answer sections, and reveal/focus the opened book after creation, unlocking and restoration. Keep recovery/export controls secondary and preserve explicit recovery acknowledgement. The encrypted v1 format, storage bridge, deterministic matching and standalone application behavior are unchanged. No automatic agent sharing or independent security audit is implied.
+
 ## 0.1.0a5
 
 Add a separate full-page hosted client with an opaque sandbox, strict ciphertext-only parent bridge, personal/business account scopes, atomic ETag integration, recovery download acknowledgement before creation, failure/conflict input retention and scope clearing. Reuse the canonical v1 vault cryptography and local saved-answer matcher. Include synthetic protocol and sandboxed-browser tests and the embedding/security contract. The standalone loopback application remains unchanged. Hosted owner authentication and storage are implemented by the integrating host; team key sharing and automatic agent intake are not included. No independent audit or site deployment is claimed by this package.
