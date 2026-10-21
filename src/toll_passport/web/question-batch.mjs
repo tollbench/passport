@@ -163,7 +163,7 @@ export function mountQuestionBatch(root, channel, {state,save,run,filesValue}) {
     review.textContent=session.prepared?.attempted&&!sent?'Check delivery of this batch':context.matching?`Send to ${context.recipient.name}`:'Review answers and files';
     if(Date.now()>=context.expiresAt&&!session.prepared?.attempted)feedback.textContent='This request expired. Reopen the current proposal questions; nothing has been sent.';
   };
-  savePrivate.addEventListener('click',()=>run(async()=>{if(context.matching)editor.inert=true;try{await session.prepare(drafts());feedback.textContent='Saved privately. Nothing has been sent.';}finally{editor.inert=false;}}));
+  savePrivate.addEventListener('click',()=>run(async()=>{if(context.matching){editor.inert=true;feedback.textContent='Saving privately…';}try{await session.prepare(drafts());feedback.textContent='Saved privately. Nothing has been sent.';}catch(error){if(context.matching)feedback.textContent='Not saved; your draft is still here. Nothing has been sent.';throw error;}finally{editor.inert=false;}}));
   review.addEventListener('click',()=>run(async()=>{
     if(context.matching)editor.inert=true;
     try {
