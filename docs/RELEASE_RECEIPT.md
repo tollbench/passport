@@ -124,3 +124,23 @@ See QUESTION_CHANNEL.md for the host's authorization and idempotency duties.
 Tests used synthetic data and no paid model/provider calls. No private application
 code, real owner content or credentials were published. Publication is not a
 staging/production deployment or independent security certification.
+
+## 2026-10-21 — 0.1.0a8 batch answers and trusted panels
+
+- Tagged source: `c736a1be1a7d75273a7563529fd361c17e99696b`, `v0.1.0a8`.
+- [CI 39660490761](https://github.com/tollbench/passport/actions/runs/39660490761): success on Python 3.9/3.13, 41 Node tests, 13 Python tests, installed-wheel standalone/hosted/single-question/batch browser gates.
+- [Trusted publication 39660841914](https://github.com/tollbench/passport/actions/runs/39660841914): build and publish succeeded using the existing PyPI environment and publisher.
+- [PyPI 0.1.0a8](https://pypi.org/project/toll-passport/0.1.0a8/) and [GitHub prerelease](https://github.com/tollbench/passport/releases/tag/v0.1.0a8) verified.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| toll_passport-0.1.0a8-py3-none-any.whl | `c8ac355f834718b76bedcd46a2ea402d9bbe2977b696e9bb76893effc4e3a7c0` |
+| toll_passport-0.1.0a8.tar.gz | `1708915bd8908ab6b4cb82f8aa2fabb1363524cd1e1cc1cc452cce750cb4387b` |
+
+Downloaded public artifacts matched the publication workflow artifacts and PyPI
+SHA-256 metadata. Runtime bytes in both distributions matched the tagged source;
+metadata/NOTICE attribute Steven Ochs and Tollbench and declare no runtime
+dependencies. Fresh installation of the downloaded public wheel reported
+`toll-passport 0.1.0a8` and passed all 13 loopback server/CLI tests. GitHub release
+asset digests match the same files. No application deployment, credential changes,
+private data import or live provider calls were part of this release.
