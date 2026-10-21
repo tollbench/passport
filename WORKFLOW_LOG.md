@@ -111,3 +111,9 @@ Local build initially blocked by dependency network sandbox; normal isolated
 pinned Hatchling build succeeded after approved network execution. Twine checks
 pass. Publication is pending final source/CI gate, not claimed here. No live
 application deployment or provider/model calls occurred.
+
+Release CI39539463195 passed unit/build jobs but caught an existing hosted fixture
+race: set_input_files bypasses disabled-control actionability during asynchronous
+reload. The owner UI correctly stayed locked. Added an enabled-input wait before
+recovery uploads, preserving all tamper/wrong-key assertions and runtime behavior.
+No tag or publication occurred on the failed run; fresh CI is required.

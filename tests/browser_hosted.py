@@ -118,7 +118,7 @@ with tempfile.TemporaryDirectory(prefix='passport-hosted-') as tmp, ThreadingHTT
     assert 'PRIVATE_BODY_CANARY' not in f.locator('body').inner_text()
     expect(f.locator('#answer-suggestions')).to_be_empty();expect(f.locator('#share-preview')).to_be_empty()
     f.locator('#vault-scope').select_option('personal');expect(f.locator('#locked')).to_be_visible()
-    f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#entries')).to_contain_text('PRIVATE_BODY_CANARY')
+    expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#entries')).to_contain_text('PRIVATE_BODY_CANARY')
     expect(f.locator('#book-heading')).to_be_focused()
     f.locator('#book-tools > summary').click()
     # Backup + recovery restore into empty business scope, with no host key exposure.
@@ -137,12 +137,12 @@ with tempfile.TemporaryDirectory(prefix='passport-hosted-') as tmp, ThreadingHTT
     # Reload persists only ciphertext; wrong recovery and tampered ciphertext fail closed.
     page.reload();expect(f.locator('#locked')).to_be_visible()
     wrong=json.loads(recovery.read_text());wrong['key']='A'*43+'='
-    f.locator('#unlock').set_input_files({'name':'wrong.json','mimeType':'application/json','buffer':json.dumps(wrong).encode()});expect(f.locator('#status')).to_contain_text('Action not confirmed')
+    expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files({'name':'wrong.json','mimeType':'application/json','buffer':json.dumps(wrong).encode()});expect(f.locator('#status')).to_contain_text('Action not confirmed')
     expect(f.locator('#book')).to_be_hidden()
     page.evaluate('window.tamper=true');f.locator('#reload-vault').focus();f.locator('#reload-vault').press('Enter');f.locator('dialog').get_by_role('button',name='Continue',exact=True).click()
-    expect(f.locator('#locked')).to_be_visible();f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#status')).to_contain_text('Action not confirmed');expect(f.locator('#book')).to_be_hidden()
+    expect(f.locator('#locked')).to_be_visible();expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#status')).to_contain_text('Action not confirmed');expect(f.locator('#book')).to_be_hidden()
     page.evaluate('window.tamper=false');f.locator('#reload-vault').focus();f.locator('#reload-vault').press('Enter');f.locator('dialog').get_by_role('button',name='Continue',exact=True).click()
-    f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#entries')).to_contain_text('PRIVATE_BODY_CANARY')
+    expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#entries')).to_contain_text('PRIVATE_BODY_CANARY')
     actual=page.frames[1]
     assert actual.evaluate("async()=>{try{await fetch('https://example.invalid/leak');return false}catch{return true}}")
     assert all('CSP' in failure for url,failure in failed_requests if url.startswith('https://example.invalid'))
