@@ -77,3 +77,19 @@ The tag-bound publication workflow passed. Downloaded public PyPI wheel and sdis
 | `toll_passport-0.1.0a5.tar.gz` | `34984a91703a98c8dd8a3a64089c678cd2241ee0c8b3e6b8cc630602ea510e12` |
 
 Verified all wheel/sdist runtime bytes against the reviewed source, including hosted assets, author metadata and NOTICE. A fresh isolated installation of the exact wheel downloaded from public PyPI reported `toll-passport 0.1.0a5`; every installed runtime file matched the reviewed source. Full suites were not repeated after CI. GitHub prerelease contains the verified wheel, sdist and SHA256SUMS. Earlier versions, tags and receipts remain intact. No private application source, credential files or real user data are included. No staging or production application deployment occurred in this release task.
+
+## 0.1.0a6 — hosted book experience
+
+- Canonical source/tag: [`0987eee`](https://github.com/tollbench/passport/commit/0987eee017dda543c010dbee73c5bb42fef202d5), `v0.1.0a6`.
+- [CI verification](https://github.com/tollbench/passport/actions/runs/39533895595) passed Python 3.9 and 3.13, Node tests, built-wheel tests, and standalone plus hosted Chromium acceptance.
+- [Trusted Publishing](https://github.com/tollbench/passport/actions/runs/39534034369) passed and generated publication attestations.
+- [PyPI version](https://pypi.org/project/toll-passport/0.1.0a6/) and [GitHub prerelease](https://github.com/tollbench/passport/releases/tag/v0.1.0a6).
+
+Downloaded public wheel and sdist matched the CI publication artifacts byte for byte and public PyPI SHA256 metadata. Every packaged runtime file matched the exact tagged source; license and version metadata were checked. A fresh isolated installation of the public wheel reported 0.1.0a6. GitHub release asset digests match:
+
+| File | SHA256 |
+| --- | --- |
+| `toll_passport-0.1.0a6-py3-none-any.whl` | `7f80f8f9adaeaeaff86bdecf5b6f3e0515fea63254144a26605367e08e735b02` |
+| `toll_passport-0.1.0a6.tar.gz` | `fd0e0edae359c81bb4daca3d80c6b3e07f6e6a9968a6ebe85fd385d832a75431` |
+
+The hosted book emphasizes personal/business information and exposes chapter navigation, with create/unlock/restore focus and secondary recovery/export controls. Core encryption, document format, transport and answer matching remain unchanged. No private application code, user content or credentials were published. This receipt does not claim a live application deployment or independent security audit.
