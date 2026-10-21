@@ -144,3 +144,34 @@ dependencies. Fresh installation of the downloaded public wheel reported
 `toll-passport 0.1.0a8` and passed all 13 loopback server/CLI tests. GitHub release
 asset digests match the same files. No application deployment, credential changes,
 private data import or live provider calls were part of this release.
+
+## 2026-10-21 — 0.1.0a9 deterministic topic matching
+
+- Tagged source: `1fdd8a04de54523ee37b320ebd2a4948e8f5440f`, `v0.1.0a9`.
+- [CI 39684266824](https://github.com/tollbench/passport/actions/runs/39684266824): success on Python 3.9/3.13, 49 Node tests, 13 Python tests and all five installed-wheel browser flows.
+- [Trusted publication 39684517196](https://github.com/tollbench/passport/actions/runs/39684517196): success using the existing publisher/environment.
+- [PyPI 0.1.0a9](https://pypi.org/project/toll-passport/0.1.0a9/) and [GitHub prerelease](https://github.com/tollbench/passport/releases/tag/v0.1.0a9).
+
+| Artifact | SHA-256 |
+| --- | --- |
+| toll_passport-0.1.0a9-py3-none-any.whl | `d195d0aed6201af22e4fea675430884f1f1b358e0ac556c3e290c3ff15136281` |
+| toll_passport-0.1.0a9.tar.gz | `50322183db4ce9ec20e95d492264567d3e97ca51c810606de1ec59220f8d08d4` |
+
+Public artifacts match PyPI metadata, publication CI artifacts and tagged runtime
+bytes. Canonical eleven-descriptor JSON, version, Steven Ochs/Tollbench attribution,
+Apache-2.0 and absence of runtime dependencies were verified. Fresh isolated public
+wheel installation reports a9 and passes all 13 server/CLI tests. GitHub release
+asset digests match these same artifacts and their SHA256SUMS file.
+
+Initial CI39683932265 caught a browser-fixture synchronization race: a repeated
+save assertion matched an earlier success message. The corrected fixture waits
+for actual document revision advancement without weakening classification checks.
+Parent also requested an accurate pending/failed private-save status; the final
+source includes that narrow fix and verifies failed second-save draft retention
+with persisted document unchanged. No failed source was tagged or published.
+
+Synthetic opaque browser tests establish the tested functional boundaries, not
+independent security certification or live owner acceptance. No private data,
+provider calls, new publishing permissions or staging/production changes were
+part of this release. Hosts must follow the asset-first compatibility sequence in
+TOPIC_MATCHING.md before enabling new matching contexts.
