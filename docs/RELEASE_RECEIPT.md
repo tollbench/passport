@@ -93,3 +93,34 @@ Downloaded public wheel and sdist matched the CI publication artifacts byte for 
 | `toll_passport-0.1.0a6.tar.gz` | `fd0e0edae359c81bb4daca3d80c6b3e07f6e6a9968a6ebe85fd385d832a75431` |
 
 The hosted book emphasizes personal/business information and exposes chapter navigation, with create/unlock/restore focus and secondary recovery/export controls. Core encryption, document format, transport and answer matching remain unchanged. No private application code, user content or credentials were published. This receipt does not claim a live application deployment or independent security audit.
+
+## 0.1.0a7 — explicit hosted question answer release
+
+- Canonical source/tag: [`29eab7c`](https://github.com/tollbench/passport/commit/29eab7c8012a708b838b525041229fc0a9476f89), `v0.1.0a7`.
+- [Required CI](https://github.com/tollbench/passport/actions/runs/39539659382) passed Python 3.9 and 3.13, 30 Node tests, 13 Python tests and standalone/hosted/question Chromium acceptance against the installed wheel.
+- [Trusted Publishing](https://github.com/tollbench/passport/actions/runs/39539807921) succeeded.
+- [PyPI version](https://pypi.org/project/toll-passport/0.1.0a7/) and [GitHub prerelease](https://github.com/tollbench/passport/releases/tag/v0.1.0a7).
+
+Downloaded public wheel/sdist match publication CI artifacts byte for byte and
+PyPI SHA256 metadata. Every wheel runtime file and sdist source file matches the
+exact tag (generated PKG-INFO checked as package metadata). Attribution, version
+and Apache-2.0 metadata verified. Fresh isolated installation of the downloaded
+public wheel reports `toll-passport 0.1.0a7`; all installed runtime bytes match the
+tag. GitHub prerelease contains those same artifacts and SHA256SUMS.
+
+| Artifact | SHA256 |
+| --- | --- |
+| `toll_passport-0.1.0a7-py3-none-any.whl` | `92808c84831f4c65d27e1883f6f4c82f064b96b5d121526d324b6c99093b9d11` |
+| `toll_passport-0.1.0a7.tar.gz` | `1517a0e6ab83ed262fc296b4ffcea099ef3386bfa2b8e4a708fbb86671ff458f` |
+
+Initial CI39539463195 caught an existing recovery-upload fixture race: a file was
+injected during disabled asynchronous reload. The test now waits for enabled
+input; assertions and runtime code were not relaxed. No tag or publication used
+the failed run. Corrected-source CI passed before tagging and publication.
+
+The optional channel releases one explicitly approved saved answer to a
+host-bound question/recipient, separately from unchanged ciphertext storage.
+See QUESTION_CHANNEL.md for the host's authorization and idempotency duties.
+Tests used synthetic data and no paid model/provider calls. No private application
+code, real owner content or credentials were published. Publication is not a
+staging/production deployment or independent security certification.

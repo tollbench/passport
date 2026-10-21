@@ -104,7 +104,7 @@ host timing, modal cancellation on lock and a card-sized scrollable dialog. Test
 30 Node and 13 Python pass; ordinary hosted browser and new question browser pass,
 including 2000-character mobile confirmation and reachable buttons. CI now runs
 new acceptance against installed package resources. Separately reviewed private
-host integration has 47 Python/7 Node tests, a composed browser flow and three
+host integration has 50 Python/7 Node tests, a composed browser flow and three
 actual PostgreSQL race checks; no private code or data is included in this repo.
 
 Local build initially blocked by dependency network sandbox; normal isolated
@@ -117,3 +117,11 @@ race: set_input_files bypasses disabled-control actionability during asynchronou
 reload. The owner UI correctly stayed locked. Added an enabled-input wait before
 recovery uploads, preserving all tamper/wrong-key assertions and runtime behavior.
 No tag or publication occurred on the failed run; fresh CI is required.
+
+Published a7 from corrected29eab7c after CI39539659382 passed both supported Python
+versions and all three installed-wheel browser gates. Trusted Publishing39539807921
+succeeded. Public PyPI wheel/sdist matched CI artifacts, exact tag and metadata
+hashes; fresh isolated public-wheel installation reports a7 and matches every
+runtime byte. GitHub prerelease contains the same artifacts and SHA256SUMS.
+Release links/hashes are in docs/RELEASE_RECEIPT.md. No staging deployment occurred.
+Private integration pin is handled separately in its isolated repository.
