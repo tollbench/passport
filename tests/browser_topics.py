@@ -30,22 +30,27 @@ with tempfile.TemporaryDirectory(prefix='passport-topics-') as tmp,ThreadingHTTP
  for(const[kind,type,value]of[['person','person.food_preference','Vegetarian'],['pet','pet.diet','Kibble']]){d=addEntry(d,{kind:'answer',title:'Original food question',fields:{question:'Original food question',answer:value,value,subject:c.subject,classification:classificationFor(d,c,q,type,ids[kind],true),answerOptions:[]}});ids[kind+'Fact']=d.entries.at(-1).id;}
  await fixtureApi.save(d,{vaultId:s.document.vaultId,revision:s.document.revision,scope:s.scope});return ids;}""")
  row=batch.locator('[data-batch-question=q1]');answer=row.locator('textarea');topic=row.get_by_label('Topic',exact=True);entity=row.get_by_label('About',exact=True)
+ def save_privately():
+  before=inner.evaluate('fixtureApi.getState().document.revision')
+  batch.get_by_role('button',name='Save privately',exact=True).click()
+  inner.wait_for_function('before => fixtureApi.getState().document.revision > before',arg=before)
+  expect(batch).to_contain_text('Saved privately. Nothing has been sent.')
  expect(answer).to_have_value('');entity.select_option(ids['person']);expect(answer).to_have_value('Vegetarian');expect(row.get_by_text('Saved answer source',exact=True)).to_be_visible();assert page.evaluate('releases.length')==0
  if os.environ.get('PASSPORT_CAPTURE'):row.scroll_into_view_if_needed();page.screenshot(path=os.environ['PASSPORT_CAPTURE'])
  row.get_by_role('button',name='Remove topic',exact=True).click();expect(answer).to_have_value('');expect(topic).to_have_value('')
  topic.select_option('person.food_preference');entity.select_option(ids['person']);expect(answer).to_have_value('Vegetarian');answer.fill('HUMAN_EDIT_CANARY');row.get_by_role('button',name='Remove topic',exact=True).click();expect(answer).to_have_value('HUMAN_EDIT_CANARY')
- batch.get_by_role('button',name='Save privately',exact=True).click();expect(batch).to_contain_text('Saved privately. Nothing has been sent.')
+ save_privately()
  assert inner.evaluate("fixtureApi.getState().document.entries.filter(e=>e.versions.at(-1).kind==='answer').at(-1).versions.at(-1).fields.classification") is None
  assert inner.evaluate("id=>fixtureApi.getState().document.entries.find(e=>e.id===id).versions.length",ids['personFact'])==1
  topic.select_option('pet.diet');entity.select_option(ids['pet']);expect(answer).to_have_value('HUMAN_EDIT_CANARY')
  # Explicit replacement classifies retained human text, never substitutes pet autofill.
- batch.get_by_role('button',name='Save privately',exact=True).click();expect(batch).to_contain_text('Saved privately. Nothing has been sent.')
+ save_privately()
  assert inner.evaluate("fixtureApi.getState().document.entries.filter(e=>e.versions.at(-1).fields.value==='HUMAN_EDIT_CANARY').at(-1).versions.at(-1).fields.classification.requestType")=='pet.diet'
  row.get_by_role('button',name='Remove topic',exact=True).click();page.evaluate('failSave=true');send=batch.get_by_role('button',name='Send to Fixture Agent',exact=True);send.click();expect(batch).to_contain_text('Sharing is paused');assert page.evaluate('releases.length')==0;expect(answer).to_have_value('HUMAN_EDIT_CANARY');assert f.locator('dialog').count()==0
  # Inline entity creation is private and never guesses an entity from the book scope.
  page.evaluate('failSave=false');other=batch.locator('[data-batch-question=q2]');other.get_by_label('Topic',exact=True).select_option('project.podcast_preferences');other.get_by_text('Add a project privately',exact=True).click();other.get_by_label('Name in your private book',exact=True).fill('PRIVATE_PROJECT_CANARY');other.get_by_role('button',name='Add privately',exact=True).click();expect(other.get_by_label('About',exact=True)).not_to_have_value('')
  # File-only text stays unclassified; uploaded contents never become inferred facts.
- topic.select_option('person.food_preference');entity.select_option(ids['person']);answer.fill('');row.locator('input[type=file]').set_input_files({'name':'notes.txt','mimeType':'text/plain','buffer':b'FILE_ONLY_CANARY'});expect(row).to_contain_text('notes.txt');row.get_by_label('notes.txt',exact=False).check();expect(answer).to_have_value('Attached files: notes.txt');batch.get_by_role('button',name='Save privately',exact=True).click();expect(batch).to_contain_text('Saved privately. Nothing has been sent.');assert inner.evaluate("fixtureApi.getState().document.entries.filter(e=>e.versions.at(-1).kind==='answer').at(-1).versions.at(-1).fields.classification") is None
+ topic.select_option('person.food_preference');entity.select_option(ids['person']);answer.fill('');row.locator('input[type=file]').set_input_files({'name':'notes.txt','mimeType':'text/plain','buffer':b'FILE_ONLY_CANARY'});expect(row).to_contain_text('notes.txt');row.get_by_label('notes.txt',exact=False).check();expect(answer).to_have_value('Attached files: notes.txt');save_privately();assert inner.evaluate("fixtureApi.getState().document.entries.filter(e=>e.versions.at(-1).kind==='answer').at(-1).versions.at(-1).fields.classification") is None
  row.get_by_label('notes.txt',exact=False).uncheck();answer.fill('HUMAN_EDIT_CANARY');row.get_by_role('button',name='Remove topic',exact=True).click()
  # No topic/entity/name/source/answer text is exposed before the explicit successful send.
  messages=json.dumps(page.evaluate('messages'));assert 'HUMAN_EDIT_CANARY' not in messages;assert ids['person'] not in messages;assert 'Vegetarian' not in messages;assert 'PRIVATE_PROJECT_CANARY' not in messages
