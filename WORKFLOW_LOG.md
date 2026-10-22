@@ -242,3 +242,10 @@ removal, failed-save and cancel gates, exact approved file copies. Host transact
 proof is a separate private gate. No owner data, credentials or private site code
 are in this repository. No version bump, publication or host activation here;
 Jarvis coordinates the composed a12 release after review.
+
+Parent authorized completing the public a12 publication. Read canonical main
+b954606 and preserved its newer a11 publication receipts before composing this
+release. Version metadata/citation/changelog now name a12; the existing protected
+tag workflow will perform Trusted Publishing. Publication is pending until its
+public artifacts and exact hashes are verified. No site activation is performed
+by this release worker.

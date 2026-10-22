@@ -81,7 +81,7 @@ flow above. Strict matching mode never uses the old label/exact-text fallback.
 
 ## Optional per-question recipients
 
-The next compatible client exports `BATCH_RECIPIENTS_VERSION = 1`. A host can
+Version 0.1.0a12 exports `BATCH_RECIPIENTS_VERSION = 1`. A host can
 supply `recipients:[{id,name}]` on **every** question. Each list contains 1–32
 unique opaque recipient IDs; duplicate display names remain separate and the
 editor disambiguates them with IDs. Mixed per-question/global audiences are

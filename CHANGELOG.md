@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0a12
+
+- Add optional explicit per-question recipient lists to batch contexts, with strict opaque-ID bounds and all-or-none audience validation.
+- Show each answer’s recipients and require a final answer/file review for shared contexts; saved audience provenance remains private.
+- Preserve single-recipient batches, item-picker behavior, encryption and storage formats. Host membership, authorization and transactional delivery stay outside this generic library.
+
 ## 0.1.0a11
 
 - Make hosted loading, connection failure, new-book key download, returning locked book and unlocked library states explicit.
