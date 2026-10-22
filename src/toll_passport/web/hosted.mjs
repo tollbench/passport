@@ -343,7 +343,7 @@ async function create() {
   $('creation-heading').scrollIntoView({ block: 'start', behavior: 'instant' });
 }
 async function creationRecovery() {
-  download(await exportRecovery(pendingCreation.key, pendingCreation.document.vaultId), 'passport-recovery.json');
+  download(await exportRecovery(pendingCreation.key, pendingCreation.document.vaultId), `passport-${scope}-recovery.json`);
   status('Recovery download requested. Confirm you saved it before the first hosted write.');
 }
 $('retry-recovery').addEventListener('click', () => run(creationRecovery));
@@ -358,7 +358,7 @@ $('confirm-create').addEventListener('click', () => run(async () => {
   revealBook();
 }));
 async function recovery() {
-  download(await exportRecovery(key, doc.vaultId), 'passport-recovery.json');
+  download(await exportRecovery(key, doc.vaultId), `passport-${scope}-recovery.json`);
   recoverySaved = true;
   render();
   status(
@@ -453,7 +453,7 @@ function startShare(id, v) {
 $('create').addEventListener('click', () => run(create));
 $('recovery').addEventListener('click', () => run(recovery));
 $('backup').addEventListener('click', () => run(() => download(envelope,
-  'passport-encrypted-backup.json')));
+  `passport-${scope}-encrypted-backup.json`)));
 $('lock').addEventListener('click', () => run(async () => {
   if (!recoverySaved && !await ask(
       'Without a recovery file you cannot unlock this vault. Lock anyway?')) return;

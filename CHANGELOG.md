@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0a14
+
+- Explain encrypted backups selected for unlock, recovery files from another book, invalid files and failed local decryption with scope-specific instructions. Pure unlock failures no longer suggest a timed-out storage write.
+- Name the selected locked book, clear each file selection for retries and treat cancellation as a no-op. Bind unlocked results to the original scope and stored envelope.
+- Name new hosted recovery and encrypted-backup downloads for Personal or Business. Older filenames remain valid through unchanged format and vault-ID checks.
+- Preserve encryption, recovery formats, storage/sharing protocols and memory-only key handling. No trusted-device unlock is introduced.
+
 ## 0.1.0a13
 
 - Restore hosted backups through two explicit file selections: encrypted backup, then a visible matching recovery-file control. Avoid a detached picker launched after asynchronous work.

@@ -347,3 +347,19 @@ trusted-device work, then required source/release CI and reviewed publication.
 No current device-unlock capability is claimed. Relevant future integration hooks
 are the hosted local key/document lifecycle and isolated scope-bound storage;
 keys must remain outside the ordinary host/message channels.
+
+Root reviewed fd91fe1 and authorized the a14 release. Added scope-only names for
+new hosted recovery and encrypted-backup downloads, including initial recovery
+and later recovery export. Existing filenames remain content-compatible; the
+focused browser fixture checks all six scope/type download names and unlocks
+renamed fixture files. Version metadata/changelog updated to 0.1.0a14. Required
+release gates and guarded publication follow; no trusted-device work is included.
+
+Local a14 gates passed: 67 Node tests, 13 installed-wheel Python tests, Twine,
+and both focused unlock and existing hosted browser acceptance. All 23 wheel
+runtime files match source. The synthetic download fixture now waits for creation
+to finish and opens its native details control with keyboard activation before
+export. Initial sandbox network/listener restrictions were retried with explicit
+local-test/build authorization; no product changes were needed for those blocks.
+The final source archive will be rebuilt from the committed candidate before
+artifact comparison. Full required CI remains the publication gate.

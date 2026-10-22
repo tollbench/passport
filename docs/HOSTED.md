@@ -169,3 +169,10 @@ have happened. Unlock sends no storage request. Cancellation is a no-op, and the
 file input resets on every attempt so the same file can be selected again.
 No recovery key or file is persisted by this change; trusted-device unlocking
 remains a separate unimplemented capability.
+
+New hosted downloads use `passport-personal-recovery.json` or
+`passport-business-recovery.json`, and `passport-personal-encrypted-backup.json`
+or `passport-business-encrypted-backup.json`. The scope is the only variable in
+these filenames. Existing generic or renamed files remain valid: JSON format and
+vault identity, not filenames, determine compatibility. Standalone names remain
+unchanged because that client has no Personal/Business scope.

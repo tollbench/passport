@@ -55,11 +55,23 @@ with tempfile.TemporaryDirectory(prefix='passport-unlock-fixture-') as directory
         expect(f.locator('#create')).to_be_enabled()
         with page.expect_download() as download:
             f.locator('#create').click()
+        assert download.value.suggested_filename == f'passport-{scope}-recovery.json'
         path = Path(directory) / (scope + '.json')
         download.value.save_as(path)
-        keys[scope] = path
+        keys[scope] = path  # Renamed files prove validation is content-based, not filename-based.
         f.locator('#confirm-create').click()
         expect(f.locator('#book')).to_be_visible()
+        expect(f.locator('#lock')).to_be_enabled()
+        if f.locator('#book-tools').get_attribute('open') is None:
+            f.locator('#book-tools > summary').focus()
+            f.locator('#book-tools > summary').press('Enter')
+        expect(f.locator('#book-tools')).to_have_attribute('open', '')
+        with page.expect_download() as exported:
+            f.locator('#recovery').click()
+        assert exported.value.suggested_filename == f'passport-{scope}-recovery.json'
+        with page.expect_download() as exported:
+            f.locator('#backup').click()
+        assert exported.value.suggested_filename == f'passport-{scope}-encrypted-backup.json'
     f.locator('#lock').click()
     expect(f.locator('#locked-heading')).to_have_text('Your Business book is locked.')
     assert page.url.endswith('?scope=personal')
