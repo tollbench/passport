@@ -79,3 +79,14 @@ data import, or independent security certification.
 Exact-source CI39716705638 and Trusted Publishing39717175928 succeeded. Public
 PyPI files matched local and workflow artifacts. A fresh public-wheel installation
 passed 13 Python tests; all 23 runtime files matched the tag. See RELEASE_RECEIPT.md.
+
+## a12 release: explicit per-question audiences
+
+67 Node tests, 13 installed-wheel Python tests and all seven CI browser families
+passed. The optional audience extension adds strict all-or-none recipient lists,
+opaque-ID uniqueness, bounded shared contexts, duplicate-name display and private
+approval provenance tests. Existing single-recipient and item-picker tests remain
+passing. The installed wheel passed the legacy batch browser and a synthetic
+shared-audience host integration separately. Public artifact bytes, provenance
+and installation are recorded in RELEASE_RECEIPT.md. Host membership, concurrent
+delivery and real owner workflows remain integration gates outside this package.

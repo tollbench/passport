@@ -1,5 +1,35 @@
 # Verified Passport releases
 
+## 2026-10-22 — Explicit per-question audiences, 0.1.0a12
+
+Source/tag: [`da9a1e2de27efa9b9d4e3abc489354091eb562ff`](https://github.com/tollbench/passport/commit/da9a1e2de27efa9b9d4e3abc489354091eb562ff), `v0.1.0a12`.
+
+- [Exact-source CI](https://github.com/tollbench/passport/actions/runs/39815096618): both Python versions, 67 Node tests, 13 installed-wheel Python tests and all seven browser families passed.
+- [Trusted Publishing](https://github.com/tollbench/passport/actions/runs/39816667281): build and publish succeeded through the existing tag-bound OIDC workflow.
+- [PyPI release](https://pypi.org/project/toll-passport/0.1.0a12/) and [GitHub prerelease](https://github.com/tollbench/passport/releases/tag/v0.1.0a12).
+
+Downloaded public wheel/sdist matched the reviewed local build and publication
+workflow artifacts byte for byte. All 23 wheel runtime files and 61 source files
+matched the tagged source; metadata, Steven Ochs and Tollbench attribution,
+license/NOTICE and absence of runtime dependencies were checked separately.
+Both PyPI integrity endpoints returned attestation bundles. A fresh isolated
+installation of the downloaded public wheel passed all 13 Python tests. GitHub
+release digests match the same wheel, sdist and SHA256SUMS.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `toll_passport-0.1.0a12-py3-none-any.whl` | `3db6d3cdd7502a2d37f62a0ffbd19ae00cbb3aead3e3285d3962dafcb5cc4522` |
+| `toll_passport-0.1.0a12.tar.gz` | `4fb5971a98f910f13b40f5fda540d4592829386046a0fb31de1817467579b3ab` |
+
+The installed candidate wheel also passed the existing single-recipient batch
+browser and a separate synthetic shared-audience host composition: private
+save/reopen/local matching, removable topic, failed-save/cancel refusal and
+explicit selected copies. Host membership and delivery policy are not included
+in this public package. CI initially queued for hosted runners and its run summary
+lagged completed jobs; both final run summaries now report success. No credentials,
+owner data or private application code were read into or distributed by this
+release. No site deployment occurred. Integration pin: `toll-passport==0.1.0a12`.
+
 ## 2026-10-21 — Hosted information library, 0.1.0a11
 
 Source/tag: [`e22e7addae8738917053e28187dd999ab819d400`](https://github.com/tollbench/passport/commit/e22e7addae8738917053e28187dd999ab819d400), `v0.1.0a11`.

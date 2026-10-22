@@ -249,3 +249,15 @@ release. Version metadata/citation/changelog now name a12; the existing protecte
 tag workflow will perform Trusted Publishing. Publication is pending until its
 public artifacts and exact hashes are verified. No site activation is performed
 by this release worker.
+
+Publication verified: tag v0.1.0a12 points to da9a1e2; source CI39815096618 and
+Trusted Publishing39816667281 succeeded. Both CI jobs passed all required steps
+before tagging; the run summary briefly lagged those completed jobs and now also
+reports success. Public PyPI wheel/sdist match the reviewed build and workflow
+artifacts exactly; both have provenance attestations. Fresh public-wheel install
+passed 13 Python tests. GitHub prerelease assets match the same hashes. Version,
+author/license notices, zero runtime dependencies, 23 packaged runtime files and
+61 sdist source files were verified. The local installed wheel passed both legacy
+batch and synthetic shared-audience host browsers. Receipt links/hashes are in
+docs/RELEASE_RECEIPT.md. No site writes or private data publication occurred;
+root coordinates explicit a12 installation in the separate application release.
