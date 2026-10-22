@@ -90,3 +90,15 @@ passing. The installed wheel passed the legacy batch browser and a synthetic
 shared-audience host integration separately. Public artifact bytes, provenance
 and installation are recorded in RELEASE_RECEIPT.md. Host membership, concurrent
 delivery and real owner workflows remain integration gates outside this package.
+
+## a13 release: hosted restore user gestures
+
+The hosted restore regression selects both files through separate visible label
+clicks, checks there is no automatic second picker, and covers wrong/nonmatching
+recovery, canceled replacement/deletion, competing ETags and pending cleanup on
+scope change, lock, reload and deletion. It passes in local Chrome and the final
+Linux CI browser matrix. An existing library fixture race was corrected by
+waiting for its deferred load callback before resuming; all original loading and
+empty-state assertions remain. Final release gates: 67 Node tests, 13 installed
+Python tests and all seven browser families. Public bytes/provenance and a fresh
+installation are verified in RELEASE_RECEIPT.md.

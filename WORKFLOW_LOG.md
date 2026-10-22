@@ -304,3 +304,15 @@ an explicit wait for the host callback, preserving all loading/empty assertions
 and production runtime. This is a test synchronization correction, not a delay
 or retry around a product failure. Failed log: /private/tmp/passport-a13-ci-job.log.
 The next exact-source CI run must pass before a13 tagging/publication.
+
+Publication complete after parent review: approved test-only correction 9ed15cf
+passed exact-source CI39826598202 (both Python versions and all seven browser
+families); tag v0.1.0a13 points there. Trusted Publishing39827087430 succeeded.
+Downloaded public wheel/sdist equal the reviewed local build and workflow
+artifacts. Both provenance attestations and GitHub digests match; 23 runtime and
+61 sdist source files match the tag. Fresh public-wheel installation passed all
+13 Python tests. Wheel hash remains the original approved 9c7187f6; packaged test
+correction changed the sdist to 3f39e5e5. Full hashes/links are recorded in the
+release receipt. All owned changes are committed; no site operations or owner
+recovery-file access occurred. Ops received the exact a13 pin and hashes for the
+separate root-authorized application rollout.

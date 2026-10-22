@@ -1,5 +1,36 @@
 # Verified Passport releases
 
+## 2026-10-22 — Explicit hosted restore gestures, 0.1.0a13
+
+Source/tag: [`9ed15cf249f6836e677d39721c3eed304b53bcd8`](https://github.com/tollbench/passport/commit/9ed15cf249f6836e677d39721c3eed304b53bcd8), `v0.1.0a13`.
+
+- [Exact-source CI](https://github.com/tollbench/passport/actions/runs/39826598202): both Python versions, 67 Node tests, 13 installed-wheel Python tests and all seven browser families passed.
+- [Trusted Publishing](https://github.com/tollbench/passport/actions/runs/39827087430): build and publish succeeded through the existing tag-bound publisher.
+- [PyPI release](https://pypi.org/project/toll-passport/0.1.0a13/) and [GitHub prerelease](https://github.com/tollbench/passport/releases/tag/v0.1.0a13).
+
+Public wheel/sdist downloads match the reviewed local build and publication
+workflow byte for byte. All 23 wheel runtime files and 61 sdist source files match
+the tagged source. Both artifacts have PyPI provenance attestations; GitHub asset
+digests match. A fresh isolated public-wheel installation passed 13 Python tests.
+Version, Steven Ochs and Tollbench attribution and zero runtime dependencies were
+verified. The runtime wheel remained identical through the test-only correction.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `toll_passport-0.1.0a13-py3-none-any.whl` | `9c7187f60e2bce8a97443451f516c2663a6a692be5316429b011b0b7d5795a27` |
+| `toll_passport-0.1.0a13.tar.gz` | `3f39e5e5f4607b00cc364cf71c7b9cc07f16efe379d6c83e07732235c86ba842` |
+
+The hosted Chrome regression now clicks visible controls separately for the
+backup and its recovery file. It checks wrong/nonmatching recovery, cancellation,
+competing ETags, successful replacement and scope/lock/reload/delete cleanup.
+Initial CI passed this restore regression but exposed an existing library-test
+race: the fixture resumed a load before its request arrived. The approved
+correction waits for the host callback without changing runtime or weakening
+assertions; the final exact-source matrix passed. No real owner backup, key or
+private content was used by the release worker. No site deployment occurred.
+Integration pin: `toll-passport==0.1.0a13`.
+
+
 ## 2026-10-22 — Explicit per-question audiences, 0.1.0a12
 
 Source/tag: [`da9a1e2de27efa9b9d4e3abc489354091eb562ff`](https://github.com/tollbench/passport/commit/da9a1e2de27efa9b9d4e3abc489354091eb562ff), `v0.1.0a12`.
