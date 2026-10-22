@@ -23,7 +23,7 @@ const panels = new Map();
 let pendingPanel = /^#panel-[a-z][a-z0-9-]{0,63}$/.test(location.hash) ? location.hash.slice(1) : null;
 const $ = id => document.getElementById(id);
 let key, doc, envelope, host, scope, etag = null, pendingCreation, loaded = false, sharing, receivedEnvelope, receivedRecovery, busy = false,
-  recoverySaved = false, loadFailed = false, libraryKind = 'all',
+  recoverySaved = false, loadFailed = false, pendingRestore = null, libraryKind = 'all',
   shareGeneration = 0,
   filledAnswer = null, renderedAnswerSignature = null;
 const MAX_FILE = 25 * 1024 * 1024,
@@ -66,6 +66,7 @@ function invalidateShare() {
 }
 
 function clearTransient() {
+  clearRestore();
   invalidateShare();
   libraryKind = 'all';
   $('library-search').value = '';
@@ -325,6 +326,7 @@ function render() {
 async function create() {
   if (!loaded) throw Error('unavailable');
   if (envelope || pendingCreation) throw Error('Already exists');
+  clearRestore();
   pendingCreation = await createVault();
   render();
   await creationRecovery();
@@ -366,33 +368,50 @@ function lock() {
   render();
   status('Locked. Choose the recovery file to unlock again.');
 }
+function clearRestore() {
+  pendingRestore = null;
+  $('restore-pending').hidden = true;
+  for (const id of ['restore', 'restore-open', 'restore-recovery']) $(id).value = '';
+}
 async function restore(file) {
+  if (!file) return;
   if (!loaded) throw Error('unavailable');
+  clearRestore();
+  const before = { scope, etag, envelope };
   const candidate = await jsonFile(file);
   if (!candidate || candidate.format !== 'passport-vault-v1') throw Error('Not a backup');
-  const picker = document.createElement('input');
-  picker.type = 'file';
-  picker.accept = '.json,application/json';
-  picker.addEventListener('change', () => run(async () => {
-    const recovered = await unlockVault(candidate, await jsonFile(picker.files[0]));
-    if (envelope && !await ask(
-        'Replace this hosted vault with this backup? Export your current backup first if needed.'
-        )) return;
-    await persist(candidate);
-    envelope = candidate;
-    key = recovered.key;
-    doc = recovered.document;
-    recoverySaved = true;
-    clearTransient();
-    render();
-    status('Backup restored and unlocked.');
-    revealBook();
-  }), {
-    once: true
-  });
-  status('Now choose the recovery file for this backup.');
-  picker.click();
+  if (scope !== before.scope || etag !== before.etag || envelope !== before.envelope) throw Error('conflict');
+  pendingRestore = { ...before, candidate };
+  $('restore-pending').hidden = false;
+  status('Backup selected. Choose its recovery file below.');
+  $('restore-heading').focus({ preventScroll: true });
+  $('restore-pending').scrollIntoView({ block: 'start', behavior: 'instant' });
 }
+$('cancel-restore').addEventListener('click', () => run(() => {
+  clearRestore();
+  status('Restore canceled. Your saved book has not changed.');
+}));
+$('restore-recovery').addEventListener('change', event => run(async () => {
+  const pending = pendingRestore, file = event.target.files[0];
+  event.target.value = '';
+  if (!pending || !file) return;
+  const unchanged = () => pendingRestore === pending && scope === pending.scope && etag === pending.etag && envelope === pending.envelope;
+  const recovered = await unlockVault(pending.candidate, await jsonFile(file));
+  if (!unchanged()) throw Error('conflict');
+  if (envelope && !await ask('Replace this hosted vault with this backup? Export your current backup first if needed.')) {
+    clearRestore(); status('Restore canceled. Your saved book has not changed.'); return;
+  }
+  if (!unchanged()) throw Error('conflict');
+  const result = await host.request('save', pending.scope, { envelope: pending.candidate, expectedEtag: pending.etag });
+  if (!unchanged()) throw Error('conflict');
+  etag = result.etag;
+  envelope = pending.candidate;
+  key = recovered.key;
+  doc = recovered.document;
+  recoverySaved = true;
+  clearTransient(); render();
+  status('Backup restored and unlocked.'); revealBook();
+}));
 
 function startShare(id, v) {
   invalidateShare();

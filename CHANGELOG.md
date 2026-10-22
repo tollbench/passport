@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0a13
+
+- Restore hosted backups through two explicit file selections: encrypted backup, then a visible matching recovery-file control. Avoid a detached picker launched after asynchronous work.
+- Bind pending restore to the original book scope and storage version; preserve replacement confirmation and conflict checks. Clear pending restore on cancellation, lock, scope change, reload, save, creation or deletion.
+- Keep encryption, recovery formats, sharing and all host protocols unchanged.
+
 ## 0.1.0a12
 
 - Add optional explicit per-question recipient lists to batch contexts, with strict opaque-ID bounds and all-or-none audience validation.

@@ -261,3 +261,37 @@ author/license notices, zero runtime dependencies, 23 packaged runtime files and
 batch and synthetic shared-audience host browsers. Receipt links/hashes are in
 docs/RELEASE_RECEIPT.md. No site writes or private data publication occurred;
 root coordinates explicit a12 installation in the separate application release.
+
+## 2026-10-22 — Hosted restore requires a second visible file gesture (a13 candidate)
+
+Requested correction: a real owner Chrome restore selected an encrypted backup
+but the detached recovery picker did not open after asynchronous file reading.
+The old browser test intercepted a programmatic chooser and missed this user
+activation failure. Owner: Steven Ochs / Tollbench. Jarvis directly delegated the
+fix; Jev is retired. Work is isolated on codex/passport-restore-gesture-20261022
+from verified public main c9daace. No real backup, recovery key or owner data was
+read by this worker.
+
+Implemented: an explicit visible recovery-file control and Cancel restore;
+pending ciphertext is bound to the original scope, snapshot and ETag. The normal
+second click selects recovery locally, decrypts, asks before replacement, then
+performs the same conditional save. Wrong/mismatched recovery can retry without
+writing; canceled replacement preserves the old book. Pending state clears on
+cancel, lock, scope change, reload, save, creation and deletion. No crypto or
+protocol changes, new dependencies, AI classification or site writes.
+
+Verified: actual Chrome synthetic hosted regression now uses ordinary visible
+label clicks for BOTH file selections, asserts the first gesture creates only
+one chooser, and separately tests wrong/nonmatching recovery, empty-book restore,
+canceled replacement/delete, real competing ETag refusal, successful replacement,
+and pending cleanup on scope/lock/reload/delete. Existing ciphertext-only bridge,
+key non-disclosure, sandbox, mobile and hosted behavior checks also pass. This
+corrects the prior insufficient intercepted-picker test. Further package tests
+and parent review precede publication; a13 is prepared, not published here yet.
+
+Candidate verification completed: all 67 Node tests and 13 installed-wheel Python
+tests pass. The same expanded actual Chrome hosted regression passes again using
+the built a13 wheel, whose 23 runtime files match reviewed source bytes. Artifacts
+are local under /private/tmp/passport-a13-dist; no tag, push or publication was
+performed. Parent review is the next gate. Existing README/release receipt remain
+on published a12 until a13 is approved and actually verified publicly.

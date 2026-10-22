@@ -22,6 +22,12 @@
 </section>
 <div id="status" tabindex="-1" role="status" aria-live="polite">Finding your saved book…</div>
 <div class="book-context"><label class="book-selector">Your book<select id="vault-scope" disabled></select></label><button id="reload-vault" class="secondary" hidden>Reload saved book</button></div>
+<section id="restore-pending" class="book-door" hidden>
+<h2 id="restore-heading" tabindex="-1">Open this backup.</h2>
+<p>Your encrypted backup is ready. Choose the recovery file that belongs to it. Nothing is replaced until the backup opens successfully.</p>
+<label id="restore-recovery-label" class="file-button" for="restore-recovery">Choose this backup’s recovery file<input id="restore-recovery" type="file" accept=".json,application/json"></label>
+<button id="cancel-restore" class="secondary" type="button">Cancel restore</button>
+</section>
 <section id="creation" class="book-door" hidden>
 <div class="eyebrow">BEFORE YOUR FIRST SAVE</div><h2 id="creation-heading" tabindex="-1">Keep the key to your book.</h2>
 <p>Your browser has offered a recovery file. Save it somewhere safe: it is the key you will use to open this book again. It cannot be reset for you.</p>
@@ -30,7 +36,7 @@
 <section id="welcome" class="book-door" hidden>
 <h2>Start your private library.</h2><p>Your browser creates a new encryption key for you. Save its recovery file, then start adding your information. You do not need an existing key to begin.</p>
 <button id="create">Create your private book</button>
-<details id="restore-book"><summary>Already have a backup?</summary><p>Choose your encrypted backup, then its matching recovery file.</p><label class="file-button">Restore encrypted backup<input id="restore" type="file" accept=".json,application/json"></label></details>
+<details id="restore-book"><summary>Already have a backup?</summary><p>Choose your encrypted backup, then its matching recovery file.</p><label class="file-button" for="restore">Restore encrypted backup<input id="restore" type="file" accept=".json,application/json"></label></details>
 </section>
 <section id="locked" class="book-door" hidden>
 <div class="door-lock" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 14V9a6 6 0 0 1 12 0v5"/><rect x="6" y="14" width="20" height="15" rx="3"/><path d="M16 20v4"/></svg></div>
@@ -78,7 +84,7 @@
 <p class="muted">25 MiB per file. 100 MiB encrypted-vault limit, including encoding and versions. The host may apply a smaller account quota.</p>
 <nav class="toolbar" aria-label="Vault controls"><button id="backup" class="secondary">Export encrypted backup</button><button id="recovery" class="secondary">Save recovery file</button>
 </nav><p id="usage" class="muted"></p>
-<details><summary>Portability and received information</summary><label class="file-button">Restore another encrypted backup<input id="restore-open" type="file" accept=".json,application/json"></label><label class="file-button">Open a shared package<input id="receive" type="file" accept=".json,application/json"></label><label class="file-button">Choose that package’s key<input id="receive-key" type="file" accept=".json,application/json"></label><button id="open-release" class="secondary">Preview shared information</button>
+<details><summary>Portability and received information</summary><label class="file-button" for="restore-open">Restore another encrypted backup<input id="restore-open" type="file" accept=".json,application/json"></label><label class="file-button">Open a shared package<input id="receive" type="file" accept=".json,application/json"></label><label class="file-button">Choose that package’s key<input id="receive-key" type="file" accept=".json,application/json"></label><button id="open-release" class="secondary">Preview shared information</button>
 <div id="received">
 </div>
 </details><button id="delete-vault" class="danger">Remove this hosted vault</button>

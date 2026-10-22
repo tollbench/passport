@@ -81,7 +81,12 @@ any persistent write. The owner explicitly acknowledges saving that file before
 creation proceeds. A browser cannot verify that the downloaded file was safely
 retained. Existing recovery files unlock after reload. Backup restore requires a
 backup and its matching recovery file and confirms replacement of an existing
-snapshot. Keys remain in frame memory. Lock and scope changes clear forms,
+snapshot. From a13, these are two explicit file selections: choosing the backup
+reveals a visible recovery-file control and Cancel restore. No programmatic
+picker is launched after reading the first file. The pending backup is bound to
+its original scope and ETag; wrong or mismatched recovery files cannot write, and
+replacement still requires confirmation and the original storage version. Cancel,
+lock, scope change, reload, save, creation and deletion clear the pending backup. Keys remain in frame memory. Lock and scope changes clear forms,
 suggestions, previews and references to decrypted contents. Switching an unlocked
 vault asks before discarding unsaved input; an in-flight operation blocks switches.
 

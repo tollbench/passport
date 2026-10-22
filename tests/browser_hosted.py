@@ -131,15 +131,56 @@ with tempfile.TemporaryDirectory(prefix='passport-hosted-') as tmp, ThreadingHTT
     with page.expect_download() as d:f.locator('#backup').focus();f.locator('#backup').press('Enter')
     backup=Path(tmp)/'backup.json';d.value.save_as(backup)
     f.locator('#vault-scope').select_option('business');f.locator('dialog').get_by_role('button',name='Continue',exact=True).click();expect(f.locator('#create')).to_be_visible()
-    f.locator('#restore-book > summary').click()
-    with page.expect_file_chooser() as fc:f.locator('#restore').set_input_files(str(backup))
-    fc.value.set_files(str(recovery));expect(f.locator('#entries')).to_contain_text('PRIVATE_BODY_CANARY')
-    # Delete real hosted snapshot and verify personal scope survives.
-    f.locator('#delete-vault').click();f.locator('dialog').get_by_role('button',name='Continue',exact=True).click();expect(f.locator('#create')).to_be_visible()
+    # Both restore files need their own ordinary visible user gesture. No chained picker.
+    choosers=[];page.on('filechooser',lambda chooser:choosers.append(chooser))
+    def choose_restore_file(control,path):
+        label=f.locator(f'label[for="{control}"]');expect(label).to_be_visible()
+        with page.expect_file_chooser() as fc:label.click()
+        fc.value.set_files(path)
+    def stage_backup(open_book=False):
+        if open_book:
+            for selector in ['#book-tools','#book-tools > details']:
+                if f.locator(selector).get_attribute('open') is None:f.locator(selector+' > summary').click()
+        elif f.locator('#restore-book').get_attribute('open') is None:f.locator('#restore-book > summary').click()
+        before=len(choosers);choose_restore_file('restore-open' if open_book else 'restore',str(backup))
+        expect(f.locator('#restore-pending')).to_be_visible();expect(f.locator('#restore-recovery-label')).to_be_visible()
+        assert len(choosers)==before+1, 'backup selection must not launch a recovery picker'
+    stage_backup();assert page.evaluate("localStorage.getItem('business')") is None
+    wrong_restore=json.loads(recovery.read_text());wrong_restore['key']='A'*43+'='
+    choose_restore_file('restore-recovery',{'name':'wrong.json','mimeType':'application/json','buffer':json.dumps(wrong_restore).encode()})
+    expect(f.locator('#status')).to_contain_text('Action not confirmed');expect(f.locator('#restore-pending')).to_be_visible()
+    different=json.loads(recovery.read_text());different['vaultId']='00000000-0000-4000-8000-000000000099'
+    choose_restore_file('restore-recovery',{'name':'different.json','mimeType':'application/json','buffer':json.dumps(different).encode()})
+    expect(f.locator('#status')).to_contain_text('Action not confirmed');assert page.evaluate("localStorage.getItem('business')") is None
+    f.locator('#cancel-restore').click();expect(f.locator('#restore-pending')).to_be_hidden()
+    stage_backup();f.locator('#vault-scope').select_option('personal');expect(f.locator('#locked')).to_be_visible();expect(f.locator('#restore-pending')).to_be_hidden()
+    f.locator('#vault-scope').select_option('business');expect(f.locator('#create')).to_be_visible();expect(f.locator('#restore-pending')).to_be_hidden()
+    stage_backup();choose_restore_file('restore-recovery',str(recovery));expect(f.locator('#entries')).to_contain_text('PRIVATE_BODY_CANARY');expect(f.locator('#restore-pending')).to_be_hidden()
+    stage_backup(True);f.locator('#lock').click();expect(f.locator('#locked')).to_be_visible();expect(f.locator('#restore-pending')).to_be_hidden()
+    f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#book')).to_be_visible()
+    f.locator('#add-information').click();f.locator('#entry-form [name=title]').fill('RESTORE_KEEP_CURRENT');f.locator('#entry-form [name=content]').fill('Preserve until replacement approved')
+    f.locator('#entry-form button').click();expect(f.locator('#entries .record')).to_have_count(4)
+    current=page.evaluate("localStorage.getItem('business')")
+    stage_backup(True);choose_restore_file('restore-recovery',str(recovery));f.locator('dialog').get_by_role('button',name='Cancel',exact=True).click()
+    expect(f.locator('#restore-pending')).to_be_hidden();assert page.evaluate("localStorage.getItem('business')")==current
+    stage_backup(True);f.locator('#delete-vault').click();f.locator('dialog').get_by_role('button',name='Cancel',exact=True).click()
+    expect(f.locator('#restore-pending')).to_be_visible();assert page.evaluate("localStorage.getItem('business')")==current
+    # An actual competing ETag blocks replacement, preserving the stored snapshot.
+    page.evaluate("const saved=JSON.parse(localStorage.getItem('business'));saved.etag='outside-edit';localStorage.setItem('business',JSON.stringify(saved))")
+    changed=page.evaluate("localStorage.getItem('business')")
+    choose_restore_file('restore-recovery',str(recovery));f.locator('dialog').get_by_role('button',name='Continue',exact=True).click()
+    expect(f.locator('#status')).to_contain_text('Save not confirmed');expect(f.locator('#restore-pending')).to_be_visible()
+    assert page.evaluate("localStorage.getItem('business')")==changed;expect(f.locator('#entries .record')).to_have_count(4)
+    f.locator('#reload-vault').click();f.locator('dialog').get_by_role('button',name='Continue',exact=True).click();expect(f.locator('#locked')).to_be_visible();expect(f.locator('#restore-pending')).to_be_hidden()
+    f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#entries .record')).to_have_count(4)
+    stage_backup(True);choose_restore_file('restore-recovery',str(recovery));f.locator('dialog').get_by_role('button',name='Continue',exact=True).click()
+    expect(f.locator('#status')).to_contain_text('Backup restored');expect(f.locator('#entries .record')).to_have_count(3);expect(f.locator('#restore-pending')).to_be_hidden()
+    # Delete clears a pending restore and only the current hosted snapshot.
+    stage_backup(True);f.locator('#delete-vault').click();f.locator('dialog').get_by_role('button',name='Continue',exact=True).click();expect(f.locator('#create')).to_be_visible();expect(f.locator('#restore-pending')).to_be_hidden()
     assert page.evaluate("localStorage.getItem('business')")==None
     assert page.evaluate("localStorage.getItem('personal')")==saved
     all_messages=json.dumps(page.evaluate('receipts'))
-    secrets=['PRIVATE_BODY_CANARY','PRIVATE_TITLE_CANARY','PRIVATE_FILE_CANARY','PRIVATE_ANSWER_CANARY','UNSAVED_CANARY',json.loads(recovery.read_text())['key']]
+    secrets=['PRIVATE_BODY_CANARY','PRIVATE_TITLE_CANARY','PRIVATE_FILE_CANARY','PRIVATE_ANSWER_CANARY','UNSAVED_CANARY','RESTORE_KEEP_CURRENT',json.loads(recovery.read_text())['key']]
     assert all(secret not in all_messages for secret in secrets)
     # Reload persists only ciphertext; wrong recovery and tampered ciphertext fail closed.
     page.reload();expect(f.locator('#locked')).to_be_visible()
@@ -162,5 +203,5 @@ with tempfile.TemporaryDirectory(prefix='passport-hosted-') as tmp, ThreadingHTT
     allowed={'/host','/hosted.html','/style.css','/hosted.mjs','/hosted-bridge.mjs','/vault.mjs','/answers.mjs','/question-channel.mjs','/question-answer.mjs','/question-batch-channel.mjs','/question-batch.mjs','/topic-catalog.mjs','/topic-editor.mjs', '/item-selection.mjs', '/item-share-channel.mjs', '/item-picker.mjs'}
     assert all(method=='GET' and url.removeprefix(base) in allowed for method,url in requests if not url.startswith('https://example.invalid')),requests
     assert all(secret not in json.dumps(page.evaluate("Object.values(localStorage)")) for secret in secrets)
-    print('PASS hosted: opaque sandbox, recovery-before-create, encrypted persistence, notes/files/answers/reuse, selected export, conflict/failure draft retention, scope consent+clearing, backup restore, delete isolation, reload/recovery, tamper/wrong-key rejection, ciphertext-only bridge/storage, CSP network block, mobile layout, no unexpected requests or page errors')
+    print('PASS hosted: opaque sandbox, recovery-before-create, encrypted persistence, notes/files/answers/reuse, selected export, conflict/failure draft retention, scope consent+clearing, explicit two-gesture restore, wrong/mismatched recovery, replacement/delete cancellation, restore CAS and cleanup, delete isolation, reload/recovery, tamper/wrong-key rejection, ciphertext-only bridge/storage, CSP network block, mobile layout, no unexpected requests or page errors')
     browser.close();server.shutdown()
