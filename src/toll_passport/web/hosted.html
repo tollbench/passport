@@ -16,39 +16,66 @@
 <p>Your answer saves privately before you choose whether to send it.</p><button type="button" data-question-review>Review answer for agent</button></div>
 <p data-question-feedback role="status" aria-live="polite"></p></section>
 <section id="book-intro">
-<div class="eyebrow">YOUR PRIVATE INFORMATION
-</div><h1>A book of your own.</h1><p class="intro">Your story, your business, and the information that matters to you. Keep it together. Choose the pieces you share.</p><p class="book-promise">Saving your book does not send its contents to AI providers. The host stores encrypted data; your key stays with you.</p>
+<div class="eyebrow">PASSPORT · YOUR PRIVATE LIBRARY</div>
+<h1 id="intro-heading">Your information.</h1>
+<p id="intro-description" class="intro">Your notes, files and saved answers, together in one private book.</p>
 </section>
-<div id="status" tabindex="-1" role="status" aria-live="polite">Opening Passport…
-</div><label class="book-selector">Your book<select id="vault-scope" disabled></select></label><button id="reload-vault" class="secondary" hidden>Reload saved vault</button>
-<section id="creation" hidden><h2 id="creation-heading" tabindex="-1">One key. Your book.</h2><p>Save the recovery file that your browser offers somewhere safe, then open your book. This file is your key; it cannot be reset. If the download did not arrive, use the button below.</p><button id="confirm-create">I saved my key — open my book</button><button id="retry-recovery" class="secondary">Download recovery file again</button><button id="cancel-create" class="secondary">Cancel creation</button>
+<div id="status" tabindex="-1" role="status" aria-live="polite">Finding your saved book…</div>
+<div class="book-context"><label class="book-selector">Your book<select id="vault-scope" disabled></select></label><button id="reload-vault" class="secondary" hidden>Reload saved book</button></div>
+<section id="creation" class="book-door" hidden>
+<div class="eyebrow">BEFORE YOUR FIRST SAVE</div><h2 id="creation-heading" tabindex="-1">Keep the key to your book.</h2>
+<p>Your browser has offered a recovery file. Save it somewhere safe: it is the key you will use to open this book again. It cannot be reset for you.</p>
+<button id="confirm-create">I saved my key — open my book</button><button id="retry-recovery" class="secondary">Download recovery file again</button><button id="cancel-create" class="secondary">Cancel creation</button>
 </section>
-<div id="welcome" hidden><button id="create">Create your private book</button><label class="file-button">Restore encrypted backup<input id="restore" type="file" accept=".json,application/json"></label>
-</div>
-<div id="locked" hidden><h2>Your book is locked</h2><p>Choose your recovery file to open your information on this device. Your key stays here.</p><label class="file-button">Choose recovery file<input id="unlock" type="file" accept=".json,application/json"></label>
-</div>
+<section id="welcome" class="book-door" hidden>
+<h2>Start your private library.</h2><p>Your browser creates a new encryption key for you. Save its recovery file, then start adding your information. You do not need an existing key to begin.</p>
+<button id="create">Create your private book</button>
+<details id="restore-book"><summary>Already have a backup?</summary><p>Choose your encrypted backup, then its matching recovery file.</p><label class="file-button">Restore encrypted backup<input id="restore" type="file" accept=".json,application/json"></label></details>
+</section>
+<section id="locked" class="book-door" hidden>
+<div class="door-lock" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 14V9a6 6 0 0 1 12 0v5"/><rect x="6" y="14" width="20" height="15" rx="3"/><path d="M16 20v4"/></svg></div>
+<div class="eyebrow">SAVED BOOK · LOCKED ON THIS DEVICE</div><h2>Your information is inside.</h2>
+<p>Open it with the recovery file you saved when you created this book. That file is your key; it stays on this device.</p>
+<label class="file-button unlock-file">Open with recovery file<input id="unlock" type="file" accept=".json,application/json"></label>
+<p class="muted">Look for a file named <strong>passport-recovery.json</strong>. Your saved information will appear after you unlock.</p>
+<details class="recovery-help"><summary>Why do I need this file?</summary><p>The host stores your book encrypted and cannot open it or reset its key. Use the recovery file for this book. An encrypted backup alone cannot unlock it.</p></details>
+</section>
+<aside id="book-map" class="book-map" aria-label="What your book can hold">
+<h2>Inside your book</h2><p class="muted">A private wiki you build over time.</p>
+<div><strong>Notes &amp; information</strong><span>Your story, projects and preferences.</span></div>
+<div><strong>Files &amp; documents</strong><span>Uploads and useful material you keep.</span></div>
+<div><strong>Saved answers</strong><span>Information you can reuse for a task.</span></div>
+<p class="book-promise">Saving here keeps your information private. Only the pieces you choose to share leave your book.</p>
+</aside>
 
 <div id="book" hidden>
 <div class="book-open-heading">
 <div>
-<div class="eyebrow">OPEN BOOK
-</div><h1 id="book-heading" tabindex="-1">Your book</h1><p id="book-count" class="muted"></p>
+<div class="eyebrow">YOUR PRIVATE LIBRARY</div><h1 id="book-heading" tabindex="-1">Your book</h1><p id="book-count" class="muted"></p>
 </div><button id="lock" class="secondary">Lock book</button>
 </div>
+<nav class="book-contents" aria-label="Book chapters"><a href="#information-chapter">Your information</a></nav>
 <div id="extension-panels"></div>
-<nav class="book-contents" aria-label="Book chapters"><a href="#information-chapter"><span>01</span> Your information</a><a href="#files-chapter"><span>02</span> Your files</a><a href="#answers-chapter"><span>03</span> Saved answers</a>
-</nav><h2 id="information-chapter" tabindex="-1">Your information</h2>
-<div id="entries">
-</div>
-<form id="entry-form"><h2>Add information</h2><label>Title<input name="title" required maxlength="200" placeholder="Founder biography"></label><label>Your information<textarea name="content" required rows="4"></textarea></label><label>Label <span class="muted">optional</span><input name="tag" list="labels" maxlength="80" placeholder="About you"></label><datalist id="labels"><option value="About you"><option value="About the business"><option value="Audience"><option value="Preferences"><option value="Contact information"><option value="Project details"></datalist><button>Save privately</button>
-</form>
-<section class="upload"><h2 id="files-chapter" tabindex="-1">Your files</h2><p>Bring in documents, notes, photos or exports. Choose several files together; their contents are encrypted before saving.</p><label class="file-button">Choose files<input id="upload" type="file" multiple></label><p class="muted">25 MiB per file. 100 MiB encrypted-vault limit, including encoding and versions. The host may apply a smaller account quota.</p>
+<section class="library" aria-labelledby="information-chapter">
+<div class="library-heading"><h2 id="information-chapter" tabindex="-1">Your information</h2><span class="private-label">Private to you</span></div>
+<p class="library-description">Your own wiki of notes, files and answers. Open an item to read it or choose what to share.</p>
+<div class="library-actions"><button type="button" id="add-information">＋ Add information</button><label class="file-button library-upload">↑ Upload files<input id="upload" type="file" multiple aria-describedby="upload-limit"></label></div>
+<p id="upload-limit" class="muted upload-limit">Up to 25 MiB per file. Your account storage limit also applies.</p>
+<label class="library-search">Find in your book<input id="library-search" type="search" maxlength="200" placeholder="Search titles or tags" autocomplete="off" spellcheck="false"></label>
+<div class="library-filters" role="group" aria-label="Information type"><button type="button" data-library-kind="all" aria-pressed="true">All</button><button type="button" data-library-kind="note" aria-pressed="false">Notes</button><button type="button" id="files-chapter" data-library-kind="file" aria-pressed="false">Files</button><button type="button" id="answers-chapter" data-library-kind="answer" aria-pressed="false">Saved answers</button></div>
+<p id="library-results" class="muted" role="status"></p>
+<div id="entries"></div>
 </section>
-<form id="question-form"><h2 id="answers-chapter" tabindex="-1">Saved answers</h2><p>Keep an answer you want to use again. Saving it does not send it to anyone.</p><label>Question<input name="question" required maxlength="500"></label><label>Subject reference <span class="muted">use the same unique reference each time</span><input name="subject" required maxlength="200" placeholder="person:me or project:example"></label><label>Label <span class="muted">optional; any label is accepted</span><input name="tag" list="answer-labels" maxlength="80"></label><datalist id="answer-labels"><option value="founder_bio"><option value="audience"><option value="pitch_angle"><option value="contact_preference"><option value="project_details"></datalist><label>Use<select name="scope"><option value="task">This task</option><option value="reusable">Reusable information</option></select></label><label id="task-reference">Task reference <span class="muted">optional</span><input name="taskId" maxlength="200" placeholder="task:example" aria-describedby="task-reference-help"><span id="task-reference-help" class="muted">Add a task reference to find this answer again for this task. Leave it blank to save without automatic suggestions.</span></label>
+<details id="information-editor" class="library-editor"><summary>Add information</summary>
+<form id="entry-form"><label>Title<input name="title" required maxlength="200" placeholder="Founder biography"></label><label>Your information<textarea name="content" required rows="4"></textarea></label><label>Label <span class="muted">optional</span><input name="tag" list="labels" maxlength="80" placeholder="About you"></label><datalist id="labels"><option value="About you"><option value="About the business"><option value="Audience"><option value="Preferences"><option value="Contact information"><option value="Project details"></datalist><button>Save privately</button>
+</form></details>
+<details id="answer-editor" class="library-editor"><summary>Add a saved answer</summary>
+<form id="question-form"><h2>Save an answer for later</h2><p>Keep an answer you want to use again. Saving it does not send it to anyone.</p><label>Question<input name="question" required maxlength="500"></label><label>Subject reference <span class="muted">use the same unique reference each time</span><input name="subject" required maxlength="200" placeholder="person:me or project:example"></label><label>Label <span class="muted">optional; any label is accepted</span><input name="tag" list="answer-labels" maxlength="80"></label><datalist id="answer-labels"><option value="founder_bio"><option value="audience"><option value="pitch_angle"><option value="contact_preference"><option value="project_details"></datalist><label>Use<select name="scope"><option value="task">This task</option><option value="reusable">Reusable information</option></select></label><label id="task-reference">Task reference <span class="muted">optional</span><input name="taskId" maxlength="200" placeholder="task:example" aria-describedby="task-reference-help"><span id="task-reference-help" class="muted">Add a task reference to find this answer again for this task. Leave it blank to save without automatic suggestions.</span></label>
 <section id="answer-suggestions" aria-label="Saved answer suggestions" hidden>
 </section><label>Your answer<textarea name="answer" required rows="3"></textarea></label><p id="answer-source" class="muted" role="status"></p><label class="file-button">Attach files<input name="files" type="file" multiple></label><button>Save answer privately</button>
-</form>
+</form></details>
 <details id="book-tools"><summary>Recovery, export and vault settings</summary>
+<p class="muted">25 MiB per file. 100 MiB encrypted-vault limit, including encoding and versions. The host may apply a smaller account quota.</p>
 <nav class="toolbar" aria-label="Vault controls"><button id="backup" class="secondary">Export encrypted backup</button><button id="recovery" class="secondary">Save recovery file</button>
 </nav><p id="usage" class="muted"></p>
 <details><summary>Portability and received information</summary><label class="file-button">Restore another encrypted backup<input id="restore-open" type="file" accept=".json,application/json"></label><label class="file-button">Open a shared package<input id="receive" type="file" accept=".json,application/json"></label><label class="file-button">Choose that package’s key<input id="receive-key" type="file" accept=".json,application/json"></label><button id="open-release" class="secondary">Preview shared information</button>

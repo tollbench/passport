@@ -56,6 +56,7 @@ with tempfile.TemporaryDirectory(prefix='passport-question-') as tmp, ThreadingH
     expect(f.locator('[data-question-editor]')).to_be_visible()
     expect(f.locator('[data-question-title]')).to_be_focused()
     assert f.locator('[data-question-title]').evaluate('(el) => { const r=el.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }')
+    f.locator('#add-information').click()
     f.locator('#entry-form [name=title]').fill('Private unrelated note');f.locator('#entry-form [name=content]').fill('NEVER_RELEASE_OTHER_INFORMATION');f.locator('#entry-form button').click()
     answer=f.locator('#agent-question textarea');answer.fill('APPROVED_ANSWER_CANARY')
     assert 'APPROVED_ANSWER_CANARY' not in json.dumps(page.evaluate('messages'))

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0a11
+
+- Make hosted loading, connection failure, new-book key download, returning locked book and unlocked library states explicit.
+- Browse actual notes, files and saved answers with compact expandable previews, deterministic title/tag search and type filters.
+- Keep add/upload actions clear; place manual answer metadata and recovery settings behind secondary controls. Clear library content, search and counts when locked or switched.
+- Preserve opaque-frame storage, encryption, question/item channels and trusted extension contracts. No new modules, schema changes, AI categorization or automatic imports.
+
 ## 0.1.0a10
 
 - Add optional exact-version item picker/channel with explicit approval after encrypted intent save, pinned folder snapshots and selected private uploads.

@@ -23,7 +23,7 @@ const panels = new Map();
 let pendingPanel = /^#panel-[a-z][a-z0-9-]{0,63}$/.test(location.hash) ? location.hash.slice(1) : null;
 const $ = id => document.getElementById(id);
 let key, doc, envelope, host, scope, etag = null, pendingCreation, loaded = false, sharing, receivedEnvelope, receivedRecovery, busy = false,
-  recoverySaved = false,
+  recoverySaved = false, loadFailed = false, libraryKind = 'all',
   shareGeneration = 0,
   filledAnswer = null, renderedAnswerSignature = null;
 const MAX_FILE = 25 * 1024 * 1024,
@@ -67,6 +67,10 @@ function invalidateShare() {
 
 function clearTransient() {
   invalidateShare();
+  libraryKind = 'all';
+  $('library-search').value = '';
+  $('information-editor').open = false;
+  $('answer-editor').open = false;
   renderedAnswerSignature = null;
   filledAnswer = null;
   $('answer-suggestions').replaceChildren();
@@ -233,50 +237,90 @@ function downloadFile(f) {
   }), f.name.replace(/[\\/\x00-\x1f]/g, '_'));
 }
 
+function libraryEntries() {
+  return (doc?.entries || []).filter(entry => ![...panels.values()].some(p => p.controller.ownsEntry?.(entry)));
+}
+function renderLibrary() {
+  const list = $('entries');
+  list.replaceChildren();
+  const entries = key ? libraryEntries() : [];
+  const search = $('library-search').value.trim().toLocaleLowerCase();
+  document.querySelectorAll('[data-library-kind]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.libraryKind === libraryKind)));
+  if (!key) { $('library-results').textContent = ''; return; }
+  const kind = entry => ['file', 'answer'].includes(entry.versions.at(-1).kind) ? entry.versions.at(-1).kind : 'note';
+  const matching = entries.filter(entry => {
+    const v = entry.versions.at(-1);
+    return (libraryKind === 'all' || libraryKind === kind(entry)) &&
+      (!search || [v.title, ...(v.tags || [])].some(text => text.toLocaleLowerCase().includes(search)));
+  });
+  $('library-results').textContent = entries.length ? `${matching.length} of ${entries.length} ${entries.length === 1 ? 'item' : 'items'}` : '';
+  if (!entries.length) {
+    const empty = node('div', undefined, 'library-empty');
+    empty.append(node('h3', 'Your library starts here.'), node('p', 'Add a note about yourself or your business, or upload a document. What you save will appear here.'));
+    list.append(empty);
+  } else if (!matching.length) {
+    list.append(node('p', 'No items match. Try another title or tag, or choose All.', 'book-empty'));
+  }
+  for (const entry of matching) {
+    const v = entry.versions.at(-1), card = node('article', undefined, 'record library-record'),
+      details = node('details'), summary = node('summary'), body = node('div', undefined, 'record-body'),
+      type = { file: 'File', answer: 'Saved answer', note: 'Note' }[kind(entry)];
+    summary.append(node('span', type, 'record-type'), node('strong', v.title, 'record-title'));
+    const preview = typeof v.fields.content === 'string' ? v.fields.content : typeof v.fields.answer === 'string' ? v.fields.answer : '';
+    if (preview) summary.append(node('span', preview.replace(/\s+/g, ' ').slice(0, 120) + (preview.length > 120 ? '…' : ''), 'record-preview'));
+    const tags = node('div', undefined, 'record-tags');
+    for (const t of v.tags || []) tags.append(node('span', t, 'tag'));
+    if (tags.childNodes.length) summary.append(tags);
+    body.append(node('p', `Version ${v.version} · ${new Date(v.createdAt).toLocaleDateString()}`, 'muted'));
+    for (const [field, value] of Object.entries(v.fields)) {
+      body.append(node('p', `${field === 'content' ? '' : field + ': '}${typeof value === 'string' ? value : JSON.stringify(value)}`));
+    }
+    for (const f of v.files || []) body.append(button(`Download ${f.name}`, () => downloadFile(f)));
+    const actions = node('div', undefined, 'record-actions');
+    actions.append(button('Choose what to share', () => startShare(entry.id, v)), button('Remove', async () => {
+      if (await ask('Remove this record and its versions from this hosted vault? Existing exports and shared copies remain.')) await save(removeEntry(doc, entry.id));
+    }, 'danger'));
+    body.append(actions); details.append(summary, body); card.append(details); list.append(card);
+  }
+}
+$('library-search').addEventListener('input', renderLibrary);
+for (const b of document.querySelectorAll('[data-library-kind]')) b.addEventListener('click', () => {
+  libraryKind = b.dataset.libraryKind; renderLibrary();
+});
+$('add-information').addEventListener('click', () => {
+  $('information-editor').open = true;
+  $('entry-form').elements.title.focus({ preventScroll: true });
+  $('information-editor').scrollIntoView({ block: 'start', behavior: 'instant' });
+});
 function render() {
   questionPanel?.refresh(); batchPanel?.refresh(); itemPanel?.refresh(); refreshPanels();
-  const unlocked = !!key;
-  $('welcome').hidden = !loaded || !!envelope || !!pendingCreation;
-  $('creation').hidden = !pendingCreation;
-  $('reload-vault').hidden = !host || !!pendingCreation;
-  $('locked').hidden = !envelope || unlocked;
+  const unlocked = !!key, state = unlocked ? 'open' : pendingCreation ? 'recovery' : !loaded ? loadFailed ? 'error' : 'loading' : envelope ? 'locked' : 'empty';
+  document.body.dataset.bookState = state;
+  $('intro-heading').textContent = scope === 'business' ? 'Your business information.' : scope === 'personal' ? 'Your personal information.' : 'Your information.';
+  $('intro-description').textContent = state === 'loading' ? 'Finding your saved book…' : state === 'error' ? host ? 'Your saved book could not be loaded. Choose Reload saved book to try again.' : 'The book connection is unavailable. Close this book and open it again, or refresh the page.' :
+    scope === 'business' ? 'Your company story, documents and saved answers, together in one private book.' : 'Your story, documents and saved answers, together in one private book.';
+  $('welcome').hidden = state !== 'empty';
+  $('creation').hidden = state !== 'recovery';
+  $('reload-vault').hidden = !host || !!pendingCreation || state === 'loading';
+  $('locked').hidden = state !== 'locked';
   $('book').hidden = !unlocked;
   $('book-intro').hidden = unlocked;
+  $('book-map').hidden = unlocked || !loaded || !!pendingCreation;
   if (!unlocked) {
-    $('entries').replaceChildren();
+    $('book-count').textContent = '';
+    $('usage').textContent = '';
+    renderLibrary();
     $('received').replaceChildren();
     $('share').hidden = true;
     $('share-preview').replaceChildren();
     $('share-fields').replaceChildren();
     return;
   }
-  $('usage').textContent =
-    `${doc.entries.length} records · ${(envelope.ciphertext.length*3/4/1024/1024).toFixed(2)} MiB encrypted · Recovery file ${recoverySaved?'download requested':'needed for future unlocking'}`;
+  $('usage').textContent = `${doc.entries.length} records · ${(envelope.ciphertext.length*3/4/1024/1024).toFixed(2)} MiB encrypted · Recovery file ${recoverySaved ? 'download requested' : 'needed for future unlocking'}`;
   $('book-heading').textContent = scope === 'business' ? 'Your business book' : 'Your personal book';
-  $('book-count').textContent = doc.entries.length ? `${doc.entries.length} saved ${doc.entries.length === 1 ? 'item' : 'items'} · Private to you` : 'Your book is open. Start with something about you or your business.';
-  const list = $('entries');
-  list.replaceChildren();
-  if (!doc.entries.length) list.append(node('p',
-    'A story, a preference, a project, a useful document. Add the information you want to keep here.', 'book-empty'));
-  for (const entry of doc.entries) {
-    if ([...panels.values()].some(p => p.controller.ownsEntry?.(entry))) continue;
-    const v = entry.versions.at(-1),
-      card = node('article', undefined, 'record');
-    card.append(node('h3', v.title), node('p',
-      `Version ${v.version} · ${new Date(v.createdAt).toLocaleDateString()}`, 'muted'));
-    for (const t of v.tags || []) card.append(node('span', t, 'tag'));
-    for (const [field, value] of Object.entries(v.fields)) {
-      card.append(node('p', `${field === 'content' ? '' : field + ': '}${typeof value==='string'?value:JSON.stringify(value)}`));
-    }
-    for (const f of v.files || []) card.append(button(`Download ${f.name}`, () => downloadFile(f)));
-    card.append(button('Choose what to share', () => startShare(entry.id, v)), button('Remove',
-      async () => {
-        if (await ask(
-            'Remove this record and its versions from this hosted vault? Existing exports and shared copies remain.'
-            )) await save(removeEntry(doc, entry.id));
-      }, 'danger'));
-    list.append(card);
-  }
+  const count = libraryEntries().length;
+  $('book-count').textContent = count ? `${count} saved ${count === 1 ? 'item' : 'items'} · Only in your book until you share` : 'Your book is open. Add information to make it yours.';
+  renderLibrary();
 }
 async function create() {
   if (!loaded) throw Error('unavailable');
@@ -579,10 +623,12 @@ $('delete-vault').addEventListener('click', () => run(async () => {
   status('Hosted vault removed. Existing backups, downloads and shared copies remain.');
 }));
 async function reloadVault() {
-  loaded = false; lock(); envelope = null; etag = null; render();
-  envelope = await readSaved(); loaded = true; render();
-  status(envelope ? 'Your encrypted snapshot is stored by the host. Unlock with its recovery file.' :
-    'Create a private vault or restore an encrypted backup.');
+  loaded = false; loadFailed = false; lock(); envelope = null; etag = null; render();
+  status('Finding your saved book…');
+  try { envelope = await readSaved(); }
+  catch (error) { loadFailed = true; render(); throw error; }
+  loaded = true; render();
+  status('');
 }
 $('reload-vault').addEventListener('click', () => run(async () => {
   if (await ask('Reload and lock this vault? Any unsaved form input will be cleared.')) await reloadVault();
@@ -604,10 +650,11 @@ for (const form of document.querySelectorAll('form')) {
     if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); submit(); }
   });
 }
+render();
 await run(async () => {
-  host = await connectHost(); scope = host.scope;
+  try { host = await connectHost(); } catch (error) { loadFailed = true; render(); throw error; } scope = host.scope;
   for (const value of host.scopes) {
-    const option = node('option', value === 'personal' ? 'Personal' : 'Business (private to this account)');
+    const option = node('option', value === 'personal' ? 'Personal' : 'Business');
     option.value = value; $('vault-scope').append(option);
   }
   $('vault-scope').value = scope;

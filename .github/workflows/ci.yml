@@ -58,6 +58,7 @@ jobs:
           PYCODE
           python tests/browser_smoke.py
           python tests/browser_hosted.py
+          python tests/browser_library.py
           python tests/browser_questions.py
           python tests/browser_batches.py
           python tests/browser_topics.py

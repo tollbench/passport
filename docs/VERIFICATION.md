@@ -57,3 +57,21 @@ manifest fixture is verified by JavaScript and Python. Import tests preserve
 original versions and refuse changed-source overwrite of owner-enriched notes.
 Host authorization/revocation/database concurrency and actual owner-flow use are
 separate acceptance gates; public fixtures do not imply those are deployed.
+
+## a11 candidate: hosted information library
+
+64 Node tests and 13 installed-wheel Python tests pass. All seven installed-wheel
+browser families pass: standalone, hosted storage/recovery, assigned question,
+batch/fixed extension, deterministic topics, item picker, and the new information
+library. The library fixture verifies real empty/recovery/locked/open/loading/error
+states, including an absent initial host connection; create remains unavailable
+on load failure. It exercises real-pointer upload/editor controls, title/tag
+search, note/file/answer filters, compact item expansion, no fabricated content,
+clearing of search/counts/plaintext on lock and scope change, and ciphertext-only
+parent messages. Desktop and 390px mobile screenshots contain synthetic records.
+Restoration remains a secondary expandable action on the new-book screen.
+
+No crypto, encrypted schema or channel contract changes are included. Public
+fixtures verify the fixed-panel contract; each host must verify its own actual
+extensions and rollout. These results do not imply a hosted deployment, owner
+data import, or independent security certification.

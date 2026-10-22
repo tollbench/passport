@@ -120,3 +120,32 @@ The optional question channel adds `question-channel.mjs` and `question-answer.m
 ## Optional disclosure channels
 
 Storage v1 stays ciphertext-only. Separate [assigned-question](QUESTION_CHANNEL.md), [batch-question](BATCH_CHANNEL.md) and [selected-item](ITEM_SHARING.md) channels release only owner-approved copies. Their capability handshake is not server authorization. Hosts bind exact recipient/task scope, validate ownership, implement idempotent delivery and enforce revocation/expiry where their grant service supports it. See [TOPIC_MATCHING.md](TOPIC_MATCHING.md) for local deterministic autofill; it never authorizes disclosure.
+
+## Information library
+
+The hosted client has explicit `data-book-state` UI states: `loading`, `error`,
+`empty` (no saved snapshot), `recovery` (new key download awaiting acknowledgement),
+`locked` and `open`. These are local presentation state, not a new host protocol.
+A missing or failed load never enables creation. If the initial connection fails,
+the UI asks the user to reopen the book or refresh the page; a failed storage
+request with a connected host offers Reload saved book.
+
+The returning-book screen explains that `passport-recovery.json` is the original
+key and shows only fixed descriptions of what a book can hold. It exposes no
+private titles, tags, counts or previews. The unlocked library renders real saved
+records, excluding entries owned by registered extension panels. Search performs
+case-insensitive substring matching on each latest title and its explicit tags;
+notes/files/answers filters use the existing latest-version kind. No embeddings,
+AI inference, external search or automatic source import is involved. File content
+is not searched. Empty and no-match states are distinct.
+
+Record previews expand inside the isolated frame. Existing exact-selection
+sharing and remove semantics are preserved. `Add information` opens the note
+editor; upload remains in the library action row. The manual answer form and
+recovery/export settings are collapsed. Active question, batch and item requests
+retain focus priority. Fixed registered panels keep the existing mount, refresh,
+focus and encrypted-save contract. Search, item DOM and counts are cleared on
+lock and scope changes; closing the embedding frame destroys that context.
+
+This release changes hosted presentation only. Host-specific goals, action packs,
+agent operation, contacts/CRM and deployment policy are not part of this public UI.

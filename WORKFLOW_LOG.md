@@ -175,3 +175,37 @@ README, hosted boundary/asset documentation, FORMAT and release guidance are rec
 Parent authorized publication after public review, exact-source CI 39693640778 success and separate private composition checks. Publication worker passport_a10_publish guarded clean main/remote at f89d48a, created normal immutable tag v0.1.0a10 and explicitly dispatched the existing publish.yml. Trusted Publishing 39694851821 succeeded; no publisher permissions or credentials changed. CI artifact and local hashes agree. Public version JSON initially returned 404 during propagation; project JSON explicitly identified a10 and its expected artifact URLs/hashes, so verification used that endpoint.
 
 Downloaded the public wheel/sdist and checked exact build bytes, all tagged runtime/source bytes, version/author/licenses/NOTICE and no dependencies. Fresh isolated public-wheel installation passed 13 Python tests and 23 runtime-file byte comparisons. Both public provenance endpoints returned attestation bundles. Created a prerelease with those same artifacts and SHA256SUMS and checked GitHub asset digests. Receipt links/hashes are in docs/RELEASE_RECEIPT.md. Synthetic checks used no paid model/provider calls; coordination token usage is not exposed. No site deployment occurred. Next: private integration may consume exact toll-passport==0.1.0a10 through its separate staging gates.
+
+## 2026-10-21 — Hosted information library (a11 candidate)
+
+Requested outcome: make the real book destination understandable after opening
+the branded Passport cover. Owner: Passport library worker, delegated directly by
+Jarvis under Steven's current instructions; no Jev selection or Factory execution
+was used. Work is isolated from public main b8b3e55 in
+`codex/passport-library-ui-20261021`. Public main/PyPI were checked: a10 current,
+a11 absent. No private site code or proprietary goal/CRM features are included.
+
+Implemented: explicit loading, error, empty, recovery acknowledgement, locked and
+open states. New books explain automatic browser key creation; existing books
+ask for the original `passport-recovery.json`. A failed load cannot enable Create.
+The unlocked library browses actual notes/files/answers with local title/tag
+substring search, stored-kind filters and expandable previews. Add and Upload
+remain prominent; manual answers, restore and settings are secondary. Search,
+counts and item DOM clear on lock/scope. Registered panels and selected question,
+batch and item focus/release contracts remain intact. Crypto, schemas, transport
+and keys are unchanged. No data imports, external AI calls or new dependencies.
+
+Verification: 64 Node tests and 13 installed-wheel Python tests; all seven installed
+browser gates passed with synthetic data. Source runtime matched all 19 installed
+web resources. Parent reviewed new/locked/open/mobile screenshots and approved
+the direction, then requested Restore move into Already have a backup details;
+that UI-only follow-up is included and its hosted/library gates are reverified.
+Browser fixture scrolling initially missed two controls after focus movement;
+explicit visible scroll positioning verifies pointer controls, with keyboard
+activation also covering export. Initial sandbox loopback test needed approved
+local process access; no application/server mutation was involved.
+
+Publication and staging deployment are pending parent review. Next: give the
+committed candidate/wheel to the private host worker for composition checks; root
+coordinates trusted publication and staging separately. No live owner data,
+recovery keys, provider tokens or private records were used.

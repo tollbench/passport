@@ -4,11 +4,11 @@
 
 Passport is an independent, open-source personal-information vault from Toll Bench. It encrypts information in your browser and lets you export selected information as a separately encrypted package. The standalone application runs locally without an account, AI provider, telemetry or cloud storage. A separate hosted client connects encrypted storage to an authenticated host through an isolated frame.
 
-**Status: 0.1.0a10 release candidate, reference alpha. Not independently security-audited.** Includes the standalone reference application and a separate hosted client component. Use sample information while evaluating it. Standalone behavior is unchanged. See [hosted embedding and security responsibilities](docs/HOSTED.md).
+**Status: 0.1.0a11 release candidate, reference alpha. Not independently security-audited.** Includes the standalone reference application and a separate hosted client component. Use sample information while evaluating it. Standalone behavior is unchanged. See [hosted embedding and security responsibilities](docs/HOSTED.md).
 
 ## Run it
 
-After this candidate is published: `python -m pip install toll-passport==0.1.0a10`, then `toll-passport serve`. See the [verified release receipt](docs/RELEASE_RECEIPT.md).
+After this candidate is published: `python -m pip install toll-passport==0.1.0a11`, then `toll-passport serve`. See the [verified release receipt](docs/RELEASE_RECEIPT.md).
 
 Python 3.9 or later and a current browser with Web Crypto and IndexedDB are required. From a source checkout:
 
@@ -19,7 +19,7 @@ python -m pip install .
 toll-passport serve
 ```
 
-Open **http://127.0.0.1:8765**. Keep that exact address and port: browser storage is scoped to its origin. A different port or `localhost` is a different storage location. Install a released wheel with `python -m pip install path/to/toll_passport-0.1.0a10-py3-none-any.whl`. A GitHub release does not imply availability on PyPI; check the release notes.
+Open **http://127.0.0.1:8765**. Keep that exact address and port: browser storage is scoped to its origin. A different port or `localhost` is a different storage location. Install a released wheel with `python -m pip install path/to/toll_passport-0.1.0a11-py3-none-any.whl`. A GitHub release does not imply availability on PyPI; check the release notes.
 
 ## Standalone capabilities
 
@@ -83,3 +83,17 @@ entity-specific answer reuse with editable question chips and the existing Send
 action. Unknown hints do not fail questions or grant access to saved information.
 
 The optional [item picker and local source import helper](docs/ITEM_SHARING.md) support exact note/file selections, fixed folder snapshots, private uploads and repeat-safe source records. Encrypted intent persistence precedes explicit release. Item grants, operator flows, goals, CRM, connectors and provider-specific import conversion remain host features. Imported prose never silently becomes a classified fact.
+
+## Your hosted information library
+
+Opening a hosted book first shows its actual state. A new book generates a key in
+your browser and waits for you to save the recovery file. An existing book asks
+for that original file to unlock. Loading and storage errors never look like an
+empty book.
+
+After unlocking, browse actual notes, files and saved answers in one library.
+Search matches titles and tags locally; type filters do not classify or infer
+information. Expand an item to read it, download its files, remove it or choose
+exactly what to share. Add information and upload controls remain visible; the
+manual saved-answer form and recovery/export settings are secondary. No material
+is automatically imported from other services. See [the hosted UI contract](docs/HOSTED.md#information-library).

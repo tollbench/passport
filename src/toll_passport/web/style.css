@@ -40,3 +40,78 @@
 #item-sharing legend { font-weight: 600; }
 #item-sharing label { overflow-wrap: anywhere; }
 #item-sharing .item-preview-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* The hosted information library. All content and search remain in the opaque frame. */
+.hosted-book { background:#faf9f5; color:#292631; }
+.hosted-book .book-page { background:#faf9f5; padding:24px; }
+.hosted-book h1 { font-family:Georgia,"Times New Roman",serif; font-weight:500; font-size:clamp(30px,7.2vw,43px); letter-spacing:-1.2px; }
+.hosted-book .intro { font-size:15px; color:#60596b; }
+.hosted-book #book-intro { border-bottom:1px solid #dfd8c9; padding-bottom:10px; }
+.hosted-book .eyebrow { font-size:10px; line-height:1.6; letter-spacing:1.6px; }
+.book-context { display:flex; align-items:end; gap:12px; margin:12px 0 20px; }
+.book-context .book-selector { flex:1; margin:0; }
+.book-context #reload-vault { flex:none; font-size:11px; padding:9px 12px; margin:0 0 1px; }
+.hosted-book .book-door { background:#fff; border:1px solid #ddd5e6; border-radius:18px; padding:22px; margin:20px 0; }
+.book-door h2 { margin:8px 0 12px; font-size:24px; line-height:1.2; letter-spacing:-.6px; }
+.book-door p { font-size:14px; line-height:1.6; color:#60596b; }
+.book-door .muted { font-size:12px; }
+.door-lock { width:42px; height:42px; margin-bottom:16px; border:1px solid #dfd6ee; border-radius:50%; display:grid; place-items:center; color:var(--purple); background:#f5f1fa; }
+.door-lock svg { width:25px; height:25px; }
+.hosted-book .unlock-file { display:block; background:var(--purple); color:white; margin:18px 0 10px; }
+.unlock-file input, .library-upload input { position:absolute; width:1px!important; height:1px; overflow:hidden; opacity:0; clip-path:inset(50%); }
+.file-button:focus-within { outline:3px solid #8970ce; outline-offset:3px; }
+.recovery-help { font-size:12px; margin-top:16px; }
+.book-map { margin:24px 0; }
+.book-map h2 { margin:0; font:24px Georgia,"Times New Roman",serif; }
+.book-map > .muted { margin-top:4px; }
+.book-map > div { display:grid; gap:2px; border-bottom:1px solid #e5dfd4; padding:11px 0; }
+.book-map strong { font-size:13px; font-weight:650; }
+.book-map span { font-size:12px; color:#756d83; }
+.hosted-book .book-promise { font-size:12px; line-height:1.6; }
+.hosted-book .book-open-heading { padding:5px 0 16px; border-color:#dfd8c9; }
+.hosted-book .book-open-heading h1 { margin:8px 0; }
+.hosted-book .book-open-heading .muted { font-size:12px; }
+.hosted-book .book-contents { display:flex; flex-wrap:wrap; gap:6px; margin:16px 0 22px; }
+.hosted-book .book-contents a { border:1px solid #ddd5e6; border-radius:18px; padding:6px 12px; font-size:12px; font-weight:500; color:var(--purple); }
+.library-heading { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.hosted-book .library-heading h2 { margin:0; font-family:Georgia,"Times New Roman",serif; font-weight:500; font-size:27px; letter-spacing:-.6px; }
+.private-label { font:10px monospace; text-transform:uppercase; letter-spacing:1px; color:#756d83; }
+.library-description { font-size:13px; color:#655e73; margin:8px 0 14px; }
+.library-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.library-actions button,.library-actions .file-button { font-size:13px; padding:10px 15px; margin:0; }
+.library-upload { position:relative; }
+.library-search { font-size:12px; color:#655e73; margin:18px 0 12px; }
+.library-search input { font-size:14px; padding:11px 13px; border-color:#ddd5e6; }
+.library-filters { display:flex; flex-wrap:wrap; gap:6px; }
+.library-filters button { margin:0; padding:7px 11px; background:transparent; border:1px solid #ddd5e6; color:#655e73; font-size:11px; font-weight:550; }
+.library-filters button[aria-pressed=true] { background:#33264d; border-color:#33264d; color:#fff; }
+#library-results { font-size:11px; margin:12px 0 4px; }
+.library-empty { padding:24px 18px; border:1px dashed #d8cfe3; border-radius:14px; margin:18px 0; }
+.library-empty h3 { font:23px Georgia,"Times New Roman",serif; margin-bottom:9px; }
+.library-empty p { font-size:13px; color:#655e73; margin:0; }
+.hosted-book .library-record { border:1px solid #e2dcd0; border-radius:13px; background:white; margin:9px 0; padding:0; overflow:hidden; }
+.library-record details { border:0; margin:0; padding:0; }
+.library-record summary { position:relative; list-style:none; color:#282532; padding:15px 38px 15px 16px; }
+.library-record summary::-webkit-details-marker { display:none; }
+.library-record summary::after { content:'+'; position:absolute; top:21px; right:16px; color:#79658b; }
+.library-record details[open] summary::after { content:'−'; }
+.record-type { display:block; text-transform:uppercase; letter-spacing:1.1px; font:9px/1.5 monospace; color:#756d83; margin-bottom:4px; }
+.record-title { display:block; font-size:15px; font-weight:650; line-height:1.4; }
+.record-preview { display:block; color:#756d83; font-size:12px; line-height:1.45; margin-top:5px; }
+.record-tags { margin-top:7px; }
+.library-record .tag { font-size:10px; background:#f2eff6; border-radius:6px; }
+.record-body { padding:0 16px 16px; border-top:1px solid #eee8df; }
+.record-body p { font-size:13px; line-height:1.6; }
+.record-body > .muted { font-size:11px; }
+.record-actions { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.hosted-book .record-actions button { margin:0; font-size:11px; }
+.hosted-book .library-editor { margin-top:18px; padding-top:14px; font-size:13px; }
+.library-editor > summary { font-weight:600; }
+.library-editor form { border:0; padding-top:0; margin-top:12px; }
+.library-editor h2 { margin-top:16px; }
+.hosted-book footer { font-size:10px; color:#857d8e; }
+@media(max-width:420px) { .hosted-book .book-page { padding:18px; } .hosted-book .book-door { padding:18px; } .book-context { gap:8px; } .book-context #reload-vault { padding:9px 10px; font-size:10px; } .library-actions { gap:6px; } .library-actions button,.library-actions .file-button { padding:10px 12px; } }
+
+.hosted-book .file-button { position:relative; }
+.hosted-book .file-button input[type=file] { position:absolute; width:1px!important; height:1px; overflow:hidden; opacity:0; clip-path:inset(50%); }
+.hosted-book .upload-limit { font-size:10px; margin:8px 0 0; }
