@@ -78,7 +78,7 @@ export class QuestionBatch {
     }
     // Even a deliberately blank batch records its private approval candidate.
     next=addEntry(next,{kind:'answer_batch',title:context.purpose,fields:{taskId:context.taskId,requestId:context.requestId,recipient:context.recipient.id,
-      questionDigests:context.questions.map(q=>({id:q.id,digest:q.digest,...(context.matching?{question:q.title}:{})})),selected:answers.map(a=>a.id),...(context.matching?{facts:versions.map(v=>({entryId:v.id,version:v.version}))}:{})}});
+      questionDigests:context.questions.map(q=>({id:q.id,digest:q.digest,...(q.recipients?{recipients:clone(q.recipients)}:{}),...(context.matching?{question:q.title}:{})})),selected:answers.map(a=>a.id),...(context.matching?{facts:versions.map(v=>({entryId:v.id,version:v.version}))}:{})}});
     const e=next.entries.at(-1),v=e.versions.at(-1);versions.push({id:e.id,version:v.version,signature:signature(v)});
     await this.save(next);
     if(generation!==this.generation)throw Error('conflict');
@@ -96,8 +96,15 @@ export class QuestionBatch {
   clear(){this.generation++;this.prepared=null;this.receipt=null;}
 }
 
+export function questionRecipients(question, context) {
+  const recipients = question.recipients || [context.recipient];
+  return recipients.map(r => recipients.filter(other => other.name === r.name).length > 1 ? `${r.name} (${r.id})` : r.name).join(', ');
+}
+
 export function mountQuestionBatch(root, channel, {state,save,run,filesValue}) {
   const session=new QuestionBatch(channel,state,save),context=channel.context;
+  const shared = context.questions.every(q => Array.isArray(q.recipients));
+  const sendLabel = shared ? 'Send to the named agents' : `Send to ${context.recipient.name}`;
   let rows=[],vaultId=null,initialized=false,sent=false,cancelDialog;
   const node=(tag,text)=>{const el=document.createElement(tag);if(text!==undefined)el.textContent=text;return el;};
   const heading=node('h2',context.purpose);heading.tabIndex=-1;
@@ -111,6 +118,7 @@ export function mountQuestionBatch(root, channel, {state,save,run,filesValue}) {
     rows=context.questions.map(q=>{
       const section=node('section');section.className='batch-question';section.dataset.batchQuestion=q.id;
       section.append(node('h3',q.title));
+      if (shared) { const audience=node('p',`Share with: ${questionRecipients(q, context)}`);audience.dataset.questionRecipients=q.id;section.append(audience); }
       const draft={id:q.id,value:q.format==='multiple_choice'?[]:'',files:[],shareFiles:[],reusable:false,selected:true,source:null};
       const row={q,draft,section};
       row.setValue=value=>{draft.value=clone(value);if(row.input)row.input.value=value;else section.querySelectorAll('input[name]').forEach(i=>{i.checked=Array.isArray(value)?value.includes(i.value):value===i.value;});};
@@ -148,7 +156,7 @@ export function mountQuestionBatch(root, channel, {state,save,run,filesValue}) {
       row.renderFiles=renderFiles;return row;
     });
     editor.replaceChildren(...rows.map(r=>r.section));
-    if(context.matching)editor.append(node('p',`${context.purpose}. Sending gives Tollbench and ${context.recipient.name} the included answers and selected files. Other book information stays private; answers are not carried to other agents.`));
+    if(context.matching)editor.append(node('p',shared?'Each included answer and selected file goes only to Tollbench and the named agents beside that question. Future sharing is off.':`${context.purpose}. Sending gives Tollbench and ${context.recipient.name} the included answers and selected files. Other book information stays private; answers are not carried to other agents.`));
     editor.append(savePrivate,review);
   }
   const drafts=()=>rows.map(r=>({...clone(r.draft),selected:r.draft.selected&&validValue(r.q,r.draft.value)}));
@@ -160,7 +168,7 @@ export function mountQuestionBatch(root, channel, {state,save,run,filesValue}) {
     if(!initialized){initialized=true;build();}
     rows.forEach(r=>{r.renderFiles();r.topic?.refresh();});
     review.disabled=sent||(Date.now()>=context.expiresAt&&!session.prepared?.attempted);
-    review.textContent=session.prepared?.attempted&&!sent?'Check delivery of this batch':context.matching?`Send to ${context.recipient.name}`:'Review answers and files';
+    review.textContent=session.prepared?.attempted&&!sent?'Check delivery of this batch':context.matching&&!shared?sendLabel:'Review answers and files';
     if(Date.now()>=context.expiresAt&&!session.prepared?.attempted)feedback.textContent='This request expired. Reopen the current proposal questions; nothing has been sent.';
   };
   savePrivate.addEventListener('click',()=>run(async()=>{if(context.matching){editor.inert=true;feedback.textContent='Saving privately…';}try{await session.prepare(drafts());feedback.textContent='Saved privately. Nothing has been sent.';}catch(error){if(context.matching)feedback.textContent='Not saved; your draft is still here. Nothing has been sent.';throw error;}finally{editor.inert=false;}}));
@@ -169,12 +177,12 @@ export function mountQuestionBatch(root, channel, {state,save,run,filesValue}) {
     try {
     let answers;try{answers=await session.prepare(drafts());}catch(error){feedback.textContent=error.message==='invalid'?'Sharing is paused. Select at most 3 files, 2 MiB each and 5 MiB total. Nothing has been sent.':'Sharing is paused. Your draft is still here; nothing has been sent.';throw error;}
     feedback.textContent='Saved privately. Nothing has been sent.';
-    if(context.matching){await send(answers);return;}
-    const dialog=node('dialog'),title=node('h2',context.purpose),copy=node('p',`Send only this reviewed batch to ${context.recipient.name}. Tollbench and ${context.recipient.name} can read and retain these answers and selected files. Other vault information stays private. Answers are not carried to other agents.`);
+    if(context.matching&&!shared){await send(answers);return;}
+    const dialog=node('dialog'),title=node('h2',context.purpose),copy=node('p',shared?'Each answer and selected file below goes only to Tollbench and its listed agents. They can read and retain those copies. Other book information stays private; future sharing is off.':`Send only this reviewed batch to ${context.recipient.name}. Tollbench and ${context.recipient.name} can read and retain these answers and selected files. Other vault information stays private. Answers are not carried to other agents.`);
     const list=node('div');
-    for(const a of answers){const q=context.questions.find(q=>q.id===a.id);list.append(node('h3',q.title),node('pre',Array.isArray(a.value)?a.value.join(', '):a.value));for(const f of a.files)list.append(node('p',`File: ${f.name} · ${fileBytes(f)} bytes · ${f.type||'unknown type'}`));}
+    for(const a of answers){const q=context.questions.find(q=>q.id===a.id);list.append(node('h3',q.title));if(shared)list.append(node('p',`Share with: ${questionRecipients(q, context)}`));list.append(node('pre',Array.isArray(a.value)?a.value.join(', '):a.value));for(const f of a.files)list.append(node('p',`File: ${f.name} · ${fileBytes(f)} bytes · ${f.type||'unknown type'}`));}
     if(!answers.length)list.append(node('p','No answers or files selected. Continue with the action above and leave these questions blank.'));
-    const yes=node('button',`Send to ${context.recipient.name}`),no=node('button','Keep private');no.className='secondary';
+    const yes=node('button',sendLabel),no=node('button','Keep private');no.className='secondary';
     const approved=await new Promise(resolve=>{const finish=v=>{cancelDialog=null;dialog.close();dialog.remove();resolve(v);};cancelDialog=()=>finish(false);yes.addEventListener('click',()=>finish(true));no.addEventListener('click',()=>finish(false));dialog.addEventListener('cancel',e=>{e.preventDefault();finish(false);});const body=node('div'),actions=node('div');body.className='batch-review-body';actions.className='batch-review-actions';body.append(title,copy,list);actions.append(yes,no);dialog.append(body,actions);root.append(dialog);dialog.showModal();no.focus();});
     if(!approved)return;
     await send(answers);

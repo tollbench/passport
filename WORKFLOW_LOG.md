@@ -224,3 +224,21 @@ and links are recorded in docs/RELEASE_RECEIPT.md. Main documentation now descri
 the released version; the immutable release tag retains its reviewed source. No
 staging or production operations were performed by this release worker. Ops
 received the exact released pin and hashes for separate authorized integration.
+
+## 2026-10-22 — Explicit per-question batch audiences
+
+Owner: Steven Ochs / Tollbench. Jarvis directly delegated this isolated change;
+Jev is retired and no Factory selection is claimed. Requested outcome: shared
+questions show each exact named recipient and release only explicitly approved
+copies. The public library adds optional all-or-none per-question audiences,
+strict opaque-ID validation and final audience/file review; private host policy
+remains outside this repository. Existing single-recipient and item-picker
+contracts remain compatible. No model calls, dependencies, encryption changes
+or plaintext persistence were introduced.
+
+Verified: focused batch tests including legacy behavior, audience bounds and
+private provenance; synthetic native-host browser save/reopen/matching, topic
+removal, failed-save and cancel gates, exact approved file copies. Host transaction
+proof is a separate private gate. No owner data, credentials or private site code
+are in this repository. No version bump, publication or host activation here;
+Jarvis coordinates the composed a12 release after review.

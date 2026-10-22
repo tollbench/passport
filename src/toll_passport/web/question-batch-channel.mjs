@@ -1,6 +1,7 @@
 // Copyright 2026 Steven Ochs and Tollbench. SPDX-License-Identifier: Apache-2.0
 // Explicit batch disclosure; independent of the unchanged ciphertext and single-question channels.
 import { validateMatching } from './topic-catalog.mjs';
+export const BATCH_RECIPIENTS_VERSION = 1;
 export const BATCH_PROTOCOL = 'passport-question-batch-v1';
 export const RELEASE_FILE_BYTES = 2 * 1024 * 1024;
 export const RELEASE_TOTAL_BYTES = 5 * 1024 * 1024;
@@ -22,12 +23,21 @@ export function validateBatchContext(v) {
       !uuid(v.requestId) || !text(v.token, 32768) || !['personal', 'business'].includes(v.scope) ||
       !text(v.subject, 200) || !text(v.taskId, 200) || !text(v.purpose, 500) ||
       !exact(v.recipient, ['id', 'name']) || !text(v.recipient.id, 100) || !text(v.recipient.name, 200) ||
-      !Number.isSafeInteger(v.expiresAt) || v.expiresAt <= 0 || !Array.isArray(v.questions) || v.questions.length < 1 || v.questions.length > 16) return false;
+      !Number.isSafeInteger(v.expiresAt) || v.expiresAt <= 0 || !Array.isArray(v.questions) || v.questions.length < 1 || v.questions.length > 64) return false;
   const ids = new Set();
   for (const q of v.questions) {
-    if (!exact(q, ['id', 'digest', 'title', 'format', 'label', 'options']) || !text(q.id, 100) || ids.has(q.id) ||
+    const qKeys = ['id', 'digest', 'title', 'format', 'label', 'options'];
+    if (!(exact(q, qKeys) || exact(q, [...qKeys, 'recipients'])) || !text(q.id, 100) || ids.has(q.id) ||
         !/^[a-f0-9]{64}$/.test(q.digest) || !text(q.title, 500) || !formats.has(q.format) ||
         !(q.label === null || typeof q.label === 'string' && /^[a-z][a-z0-9_]{0,63}$/.test(q.label)) || !Array.isArray(q.options)) return false;
+    if (Object.hasOwn(q, 'recipients')) {
+      if (!Array.isArray(q.recipients) || !q.recipients.length || q.recipients.length > 32) return false;
+      const recipients = new Set();
+      for (const r of q.recipients) {
+        if (!exact(r, ['id', 'name']) || !text(r.id, 100) || !text(r.name, 200) || recipients.has(r.id)) return false;
+        recipients.add(r.id);
+      }
+    }
     ids.add(q.id);
     if (['single_choice', 'multiple_choice'].includes(q.format)) {
       if (!q.options.length || q.options.length > 50) return false;
@@ -38,6 +48,10 @@ export function validateBatchContext(v) {
       }
     } else if (q.options.length) return false;
   }
+  // A shared request names every question's audience; mixed fallback is ambiguous.
+  const shared = v.questions.some(q => Object.hasOwn(q, 'recipients'));
+  if (shared && !v.questions.every(q => Object.hasOwn(q, 'recipients'))) return false;
+  if (!shared && v.questions.length > 16) return false;
   return !Object.hasOwn(v,'matching') || validateMatching(v.matching,v.questions);
 }
 export function validValue(question, value) {
@@ -48,7 +62,7 @@ export function validValue(question, value) {
   return Array.isArray(value) && value.length > 0 && value.length <= choices.size && new Set(value).size === value.length && value.every(v => choices.has(v));
 }
 export function validateBatchAnswers(answers, context = null) {
-  if (!Array.isArray(answers) || answers.length > 16) return false;
+  if (!Array.isArray(answers) || answers.length > 64) return false;
   let count = 0, bytes = 0; const ids = new Set();
   for (const a of answers) {
     if (!exact(a, ['id', 'value', 'files']) || !text(a.id, 100) || ids.has(a.id) || !Array.isArray(a.files)) return false;

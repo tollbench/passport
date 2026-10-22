@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createVault,addEntry} from '../src/toll_passport/web/vault.mjs';
 import {BATCH_PROTOCOL,validateBatchContext,validateBatchAnswers,fileBytes,connectBatchHost} from '../src/toll_passport/web/question-batch-channel.mjs';
-import {QuestionBatch} from '../src/toll_passport/web/question-batch.mjs';
+import {QuestionBatch,questionRecipients} from '../src/toll_passport/web/question-batch.mjs';
 const context=()=>({requestId:crypto.randomUUID(),token:'signed',scope:'business',subject:'owner:one:business',taskId:'proposal:one',purpose:'Choose Test Agent and request a final plan',recipient:{id:'one',name:'Test Agent'},questions:[{id:'q1',digest:'a'.repeat(64),title:'Founder bio?',format:'short_answer',label:'founder_bio',options:[]}],expiresAt:Date.now()+60000});
 const file={name:'bio.txt',type:'text/plain',data:btoa('CHOSEN_FILE')};
 const draft=()=>({id:'q1',value:'PRIVATE_ANSWER',files:[file,{...file,name:'private.txt',data:btoa('PRIVATE_FILE')}],shareFiles:[0],selected:true,reusable:false});
@@ -18,3 +18,31 @@ test('transport binds parent, origin, capability and nonce; sends no draft befor
 test('transport timeout retains identical approval for an expired receipt retry',async()=>{let handler;const sent=[],parent={postMessage:data=>sent.push(data)},win={parent,addEventListener:(_,fn)=>handler=fn,removeEventListener:()=>handler=null};const c=context(),pending=connectBatchHost(win,{timeout:20,releaseTimeout:5});handler({source:parent,origin:'https://host.test',data:{protocol:BATCH_PROTOCOL,type:'init',nonce:sent[0].nonce,capability:'b'.repeat(64),context:c}});const channel=await pending,answers=[{id:'q1',value:'approved',files:[]}],id=crypto.randomUUID();await assert.rejects(channel.release(answers,id),/unavailable/);c.expiresAt=1;const retry=channel.release(answers,id);const m=sent.at(-1);handler({source:parent,origin:'https://host.test',data:{protocol:BATCH_PROTOCOL,type:'receipt',nonce:m.nonce,capability:m.capability,id:m.id,ok:true,receiptId:'same'}});assert.equal((await retry).receiptId,'same');await assert.rejects(channel.release(answers,crypto.randomUUID()),/expired/);channel.close();});
 test('saved suggestion provenance stays private and is revalidated before save',async()=>{const f=await fixture();f.document=addEntry(f.document,{kind:'answer',title:'Original bio',fields:{answer:'PRIVATE_ANSWER',subject:f.c.subject,label:'founder_bio',scope:'reusable'}});const candidate=f.session.candidates(f.c.questions[0])[0];assert(candidate);const d={...draft(),source:candidate.provenance};const answers=await f.session.prepare([d]);assert.deepEqual(f.document.entries.at(-2).versions[0].fields.reusedFrom,{entryId:candidate.provenance.entryId,version:candidate.provenance.version});await f.session.release(answers);assert(!JSON.stringify(f.sent).includes(candidate.provenance.entryId));const e=f.document.entries.find(e=>e.id===candidate.provenance.entryId);f.document=addEntry(f.document,{id:e.id,kind:'answer',title:'Changed bio',fields:{answer:'New answer',subject:f.c.subject,label:'founder_bio',scope:'reusable'}});await f.session.prepare([{...d,value:'PRIVATE_ANSWER ',source:candidate.provenance}]);assert.equal(f.document.entries.at(-2).versions[0].fields.reusedFrom,undefined);});
 test('unknown or absent labels offer exact-question text only with mandatory review',async()=>{const f=await fixture();f.c.questions[0].label='preferred_tone';f.c.questions[0].title='What tone should we use?';const fields={answer:'Friendly',subject:f.c.subject,scope:'reusable',question:'  WHAT tone   should we use?  '};for(const override of [{},{subject:'other-owner'},{question:'What audience should we use?'},{scope:'task',taskId:'other-task'}])f.document=addEntry(f.document,{kind:'answer',title:'Tone',fields:{...fields,...override}});let hits=f.session.candidates(f.c.questions[0]);assert.equal(hits.length,1);assert.deepEqual(hits[0].reviewReasons,['unlabelled-exact-question']);f.c.questions[0].label=null;assert.equal(f.session.candidates(f.c.questions[0]).length,1);const id=hits[0].provenance.entryId;f.document=addEntry(f.document,{id,kind:'answer',title:'Tone',fields:{...fields,answer:'Formal'}});hits=f.session.candidates(f.c.questions[0]);assert.equal(hits.length,1);assert.equal(hits[0].answer,'Formal');assert.equal(hits[0].provenance.version,2);f.document=addEntry(f.document,{kind:'answer',title:'Tone',fields:{...fields,scope:'task',taskId:f.c.taskId,answer:'Brief'}});assert(f.session.candidates(f.c.questions[0]).every(c=>c.reviewReasons.includes('multiple-candidates')));f.c.questions[0].format='yes_no';assert.deepEqual(f.session.candidates(f.c.questions[0]),[]);});
+
+test('per-question recipients are explicit, bounded, unique by opaque ID, and all-or-none', () => {
+  const c=context();c.questions[0].recipients=[{id:'one',name:'Same name'},{id:'two',name:'Same name'}];
+  assert(validateBatchContext(c));
+  for(const recipients of [[],[{id:'one',name:'One'},{id:'one',name:'Duplicate'}],[{id:'one',name:'One',permission:'all'}],Array.from({length:33},(_,i)=>({id:String(i),name:'Agent'}))]){
+    const bad=structuredClone(c);bad.questions[0].recipients=recipients;assert(!validateBatchContext(bad));
+  }
+  const mixed=structuredClone(c);mixed.questions.push({...mixed.questions[0],id:'second'});delete mixed.questions[1].recipients;assert(!validateBatchContext(mixed));
+  const large=structuredClone(c);large.questions=Array.from({length:64},(_,i)=>({...large.questions[0],id:String(i)}));assert(validateBatchContext(large));
+  large.questions.push({...large.questions[0],id:'65'});assert(!validateBatchContext(large));
+  const legacy=context();legacy.questions=Array.from({length:17},(_,i)=>({...legacy.questions[0],id:String(i)}));assert(!validateBatchContext(legacy));
+});
+
+test('shared approval records each audience privately and releases only selected answer copies', async () => {
+  const f=await fixture();f.c.questions[0].recipients=[{id:'one',name:'Agent One'},{id:'two',name:'Agent Two'}];
+  const answers=await f.session.prepare([draft()]);
+  const saved=f.document.entries.at(-1).versions.at(-1).fields.questionDigests[0];
+  assert.deepEqual(saved.recipients,f.c.questions[0].recipients);
+  await f.session.release(answers);
+  assert(!JSON.stringify(f.sent).includes('questionDigests'));
+  assert(!JSON.stringify(f.sent).includes('Agent Two'));
+});
+
+test('audience display disambiguates duplicate names without merging IDs',()=>{
+  const c=context();const q={...c.questions[0],recipients:[{id:'a',name:'Same'},{id:'b',name:'Same'}]};
+  assert.equal(questionRecipients(q,c),'Same (a), Same (b)');
+  assert.equal(questionRecipients(c.questions[0],c),'Test Agent');
+});

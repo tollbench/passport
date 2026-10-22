@@ -64,8 +64,9 @@ context fact and its action purpose, recheck current state under appropriate
 locks, and write delivery plus its idempotent receipt atomically. Store selected
 files with authenticated named-recipient access, safe download headers and
 quotas; never publish them as general task attachments or execute/preview them.
-Do not log answers, tokens or filenames. Reject workflows that would fan out to
-other agents. Recipient-specific history must remain private under reassignment.
+Do not log answers, tokens or filenames. Reject disclosure to recipients absent from the signed context. A shared
+context must bind each question to its exact current recipient set and recheck
+that set before atomic delivery; never infer recipients from display names. Recipient-specific history must remain private under reassignment.
 Client validation is not server authorization. Revocation cannot recall a copy
 already disclosed. This package is not independently security audited.
 
@@ -77,3 +78,29 @@ their actual authorization, concurrency, delivery and UI adapters separately.
 In a9, an optional [matching context](TOPIC_MATCHING.md) enables deterministic
 local entity/topic chips and direct on-card Send. The legacy context retains the
 flow above. Strict matching mode never uses the old label/exact-text fallback.
+
+## Optional per-question recipients
+
+The next compatible client exports `BATCH_RECIPIENTS_VERSION = 1`. A host can
+supply `recipients:[{id,name}]` on **every** question. Each list contains 1–32
+unique opaque recipient IDs; duplicate display names remain separate and the
+editor disambiguates them with IDs. Mixed per-question/global audiences are
+rejected. This extension permits up to 64 questions; unchanged single-recipient
+contexts retain the 16-question bound and global `recipient` behavior.
+
+The global recipient remains a readable group heading in shared contexts. Each
+question displays its actual audience, and shared contexts always show a final
+review of included answers, their audiences and selected files, including when
+local topic matching is active. Cancel saves privately. The owner must explicitly
+send. Local topic/entity/format matching, removable topics and private provenance
+are unchanged; no classifier, network lookup or permission inference is added.
+
+The signed host token must bind these exact IDs, question versions and actions.
+Release payloads remain unchanged: only the token, approval ID and selected
+answers/files cross the channel. A client cannot replace the recipient list.
+The host implements its own membership policy, transaction locks, authorization,
+copy quotas and exact retry receipts. No implicit future-recipient grant exists.
+Private saved approval provenance includes the per-question audiences but is not
+released. Older clients reject the extension; hosts must check the capability
+marker before enabling it. Storage, encryption and single-question protocols are
+unchanged.
