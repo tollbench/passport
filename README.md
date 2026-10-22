@@ -4,11 +4,11 @@
 
 Passport is an independent, open-source personal-information vault from Toll Bench. It encrypts information in your browser and lets you export selected information as a separately encrypted package. The standalone application runs locally without an account, AI provider, telemetry or cloud storage. A separate hosted client connects encrypted storage to an authenticated host through an isolated frame.
 
-**Status: 0.1.0a11 release candidate, reference alpha. Not independently security-audited.** Includes the standalone reference application and a separate hosted client component. Use sample information while evaluating it. Standalone behavior is unchanged. See [hosted embedding and security responsibilities](docs/HOSTED.md).
+**Status: 0.1.0a11 released, reference alpha. Not independently security-audited.** Includes the standalone reference application and a separate hosted client component. Use sample information while evaluating it. Standalone behavior is unchanged. See [hosted embedding and security responsibilities](docs/HOSTED.md).
 
 ## Run it
 
-After this candidate is published: `python -m pip install toll-passport==0.1.0a11`, then `toll-passport serve`. See the [verified release receipt](docs/RELEASE_RECEIPT.md).
+Install the published release: `python -m pip install toll-passport==0.1.0a11`, then `toll-passport serve`. See the [verified release receipt](docs/RELEASE_RECEIPT.md).
 
 Python 3.9 or later and a current browser with Web Crypto and IndexedDB are required. From a source checkout:
 

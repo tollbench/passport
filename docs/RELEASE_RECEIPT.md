@@ -1,4 +1,39 @@
-# Verified standalone alpha release
+# Verified Passport releases
+
+## 2026-10-21 — Hosted information library, 0.1.0a11
+
+Source/tag: [`e22e7addae8738917053e28187dd999ab819d400`](https://github.com/tollbench/passport/commit/e22e7addae8738917053e28187dd999ab819d400), `v0.1.0a11`.
+
+- [Exact-source CI](https://github.com/tollbench/passport/actions/runs/39716705638): passed Python 3.9/3.13, 64 Node tests, 13 installed-wheel Python tests and all seven installed-wheel browser families.
+- [Trusted Publishing](https://github.com/tollbench/passport/actions/runs/39717175928): succeeded through the existing tag-bound publisher.
+- [PyPI release](https://pypi.org/project/toll-passport/0.1.0a11/) and [GitHub prerelease](https://github.com/tollbench/passport/releases/tag/v0.1.0a11).
+
+Downloaded public PyPI wheel and sdist matched the reviewed local build and
+publication-workflow artifacts byte for byte. All 23 packaged runtime files
+matched the tag; all 61 non-generated source-distribution files matched tagged
+source. Version, Steven Ochs and Tollbench attribution, Apache-2.0 metadata/NOTICE
+and absence of runtime dependencies were verified. A fresh isolated installation
+of the downloaded public wheel passed all 13 Python tests and matched all runtime
+files. GitHub prerelease asset digests match the same wheel, sdist and SHA256SUMS.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `toll_passport-0.1.0a11-py3-none-any.whl` | `d3962b440e0f0f188811b30b12d6be1b23899a7006fa36b3e7afce3bc20d76d4` |
+| `toll_passport-0.1.0a11.tar.gz` | `27eed897eba5ce59bf689acfc2295d2585e2490104efb3d4ce08921efd4c02a5` |
+
+The hosted library now separates new-book setup, existing-book recovery, loading
+and errors, then shows actual notes, files and saved answers after unlock. Local
+title/tag search and stored-kind filters make the information browsable. No AI
+classification, automatic imports, new runtime modules, crypto changes, schema
+changes or expanded disclosure authority are included. The private host's actual
+feed/book/question and fixed goal-panel composition also passed synthetic browser
+checks against the same final wheel before publication. Those private features
+are not distributed in this package.
+
+Publication does not imply deployment, owner-data import or independent security
+certification. The reviewed integration pin is `toll-passport==0.1.0a11`; installing
+it remains a separately coordinated host operation. No owner recovery keys or publishing
+credentials were read or changed. Previous releases remain immutable.
 
 ## 2026-10-21 — Selected item copies and repeat-safe imports, 0.1.0a10
 

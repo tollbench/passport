@@ -58,7 +58,7 @@ original versions and refuse changed-source overwrite of owner-enriched notes.
 Host authorization/revocation/database concurrency and actual owner-flow use are
 separate acceptance gates; public fixtures do not imply those are deployed.
 
-## a11 candidate: hosted information library
+## a11 release: hosted information library
 
 64 Node tests and 13 installed-wheel Python tests pass. All seven installed-wheel
 browser families pass: standalone, hosted storage/recovery, assigned question,
@@ -75,3 +75,7 @@ No crypto, encrypted schema or channel contract changes are included. Public
 fixtures verify the fixed-panel contract; each host must verify its own actual
 extensions and rollout. These results do not imply a hosted deployment, owner
 data import, or independent security certification.
+
+Exact-source CI39716705638 and Trusted Publishing39717175928 succeeded. Public
+PyPI files matched local and workflow artifacts. A fresh public-wheel installation
+passed 13 Python tests; all 23 runtime files matched the tag. See RELEASE_RECEIPT.md.

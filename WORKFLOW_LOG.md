@@ -209,3 +209,18 @@ Publication and staging deployment are pending parent review. Next: give the
 committed candidate/wheel to the private host worker for composition checks; root
 coordinates trusted publication and staging separately. No live owner data,
 recovery keys, provider tokens or private records were used.
+
+Publication completed after parent review: main advanced normally to e22e7ad;
+exact-source CI39716705638 passed both Python versions and all seven browser
+families. Private host composition independently passed against the same final
+wheel (native card/library, recovery, exact-agent question release/autofill, and
+fixed goal/pack panel). Parent then approved tag/publication. Tag v0.1.0a11 points
+to e22e7addae8738917053e28187dd999ab819d400; Trusted Publishing39717175928 succeeded.
+
+Downloaded public PyPI artifacts match the local build and publication workflow;
+23 wheel runtime files and 61 sdist source files match tagged source. Fresh public
+wheel installation passed 13 Python tests. GitHub prerelease digests match. Hashes
+and links are recorded in docs/RELEASE_RECEIPT.md. Main documentation now describes
+the released version; the immutable release tag retains its reviewed source. No
+staging or production operations were performed by this release worker. Ops
+received the exact released pin and hashes for separate authorized integration.
