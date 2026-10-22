@@ -363,3 +363,20 @@ export. Initial sandbox network/listener restrictions were retried with explicit
 local-test/build authorization; no product changes were needed for those blocks.
 The final source archive will be rebuilt from the committed candidate before
 artifact comparison. Full required CI remains the publication gate.
+
+
+### a14 publication verified
+
+Normal non-force push preserved public main ancestry (0104f13 → fd91fe1 →
+e30324b). Exact-source CI 39864163166 passed both Python versions and all eight
+browser families before tagging v0.1.0a14. Trusted publication 39865357091 passed.
+PyPI downloads, local build and workflow artifacts are byte-identical; GitHub
+prerelease asset digests match. Both PyPI provenance bundles are present. All 23
+wheel runtime and 62 sdist source files match the immutable tag. Fresh isolated
+public-wheel installation passed 13 Python tests; version/attribution/no runtime
+dependencies verified. Full hashes and links: docs/RELEASE_RECEIPT.md.
+
+Root and the operations worker received the exact public artifact paths/hashes
+and integration pin. No private application source, owner data, real recovery
+files, live browser state or site deployment was touched. Publication is complete;
+site package integration belongs to the separately authorized operations task.

@@ -1,5 +1,34 @@
 # Verified Passport releases
 
+## 2026-10-22 — Clear recovery-file access, 0.1.0a14
+
+Source/tag: [`e30324baf01ce529ec719c8592ef6c93839cece8`](https://github.com/tollbench/passport/commit/e30324baf01ce529ec719c8592ef6c93839cece8), `v0.1.0a14`.
+
+- [Exact-source CI](https://github.com/tollbench/passport/actions/runs/39864163166): both Python versions, 67 Node tests, 13 installed-wheel Python tests and all eight browser families passed.
+- [Trusted Publishing](https://github.com/tollbench/passport/actions/runs/39865357091): build and publish succeeded through the existing tag-bound publisher.
+- [PyPI release](https://pypi.org/project/toll-passport/0.1.0a14/) and [GitHub prerelease](https://github.com/tollbench/passport/releases/tag/v0.1.0a14).
+
+Public wheel/sdist downloads match the local build and publication workflow byte
+for byte. All 23 wheel runtime files and 62 sdist source files match the tagged
+source. Both artifacts have PyPI provenance attestations; GitHub asset digests
+match. A fresh isolated public-wheel installation passed all 13 Python tests.
+Version, Steven Ochs and Tollbench attribution and zero runtime dependencies were
+verified.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `toll_passport-0.1.0a14-py3-none-any.whl` | `7bcb1dedea61f90465761da27e47a6fa8bcf7776b4fd2207647f362805a5a2ef` |
+| `toll_passport-0.1.0a14.tar.gz` | `b1c83931919543e16f7452c8c444088314e69d17b82a6190a7dc462db0cf1d16` |
+
+The new synthetic 390px browser fixture covers both book scopes, wrong-book and
+backup-file errors, malformed files, failed decryption, cancellation, same-file
+retry and scope-specific creation/recovery/backup download names. Renamed files
+remain compatible. Pure unlock failures send no storage request and change no
+ciphertext. Existing hosted acceptance also passed. No real owner files or keys
+were used; no site deployment or trusted-device unlock is included.
+Integration pin: `toll-passport==0.1.0a14`.
+
+
 ## 2026-10-22 — Explicit hosted restore gestures, 0.1.0a13
 
 Source/tag: [`9ed15cf249f6836e677d39721c3eed304b53bcd8`](https://github.com/tollbench/passport/commit/9ed15cf249f6836e677d39721c3eed304b53bcd8), `v0.1.0a13`.
