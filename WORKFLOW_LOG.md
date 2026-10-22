@@ -295,3 +295,12 @@ the built a13 wheel, whose 23 runtime files match reviewed source bytes. Artifac
 are local under /private/tmp/passport-a13-dist; no tag, push or publication was
 performed. Parent review is the next gate. Existing README/release receipt remain
 on published a12 until a13 is approved and actually verified publicly.
+
+Publication gate correction: exact-source CI39826062943 passed the expanded
+restore regression in Linux Chrome, but exposed an existing library fixture
+race. The book entered loading before its postMessage reached the synthetic
+host; the test invoked resumeLoad before that fixture callback existed. Added
+an explicit wait for the host callback, preserving all loading/empty assertions
+and production runtime. This is a test synchronization correction, not a delay
+or retry around a product failure. Failed log: /private/tmp/passport-a13-ci-job.log.
+The next exact-source CI run must pass before a13 tagging/publication.
