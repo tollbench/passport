@@ -102,3 +102,16 @@ waiting for its deferred load callback before resuming; all original loading and
 empty-state assertions remain. Final release gates: 67 Node tests, 13 installed
 Python tests and all seven browser families. Public bytes/provenance and a fresh
 installation are verified in RELEASE_RECEIPT.md.
+
+## Hosted unlock feedback correction
+
+`tests/browser_unlock.py` uses two independently created synthetic books at 390px.
+It reproduces an outer initial Personal URL with Business selected inside the
+opaque frame, then checks a different book's recovery file, invalid JSON, an
+encrypted backup selected in the unlock control, incorrect recovery material,
+cancellation, same-file retry, and successful unlock of both books with their
+matching files. It asserts unchanged ciphertext storage and no messages during
+unlock attempts, no recovery key in host messages and no browser errors. The
+existing hosted acceptance also verifies tampered ciphertext remains locked and
+ordinary save/restore errors retain their existing behavior. CI runs both tests
+against installed package assets. No owner files are used.

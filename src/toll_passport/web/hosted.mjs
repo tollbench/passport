@@ -151,10 +151,18 @@ async function run(fn) {
   try {
     await fn();
   } catch (err) {
-    status(err.message === 'conflict' ?
+    const book = scope === 'business' ? 'Business' : 'Personal';
+    const unlockErrors = {
+      'unlock-file': `Choose a valid Passport recovery file for your ${book} book. Nothing was changed.`,
+      'unlock-backup': `This is an encrypted backup of your book. To open it, choose the recovery file downloaded when you created this ${book} book. Nothing was changed.`,
+      'unlock-wrong-book': `This recovery file belongs to a different book. Your ${book} book is still locked. Switch to the matching book or choose this book’s recovery file. Nothing was changed.`,
+      'unlock-failed': `This recovery file could not open your ${book} book. Its key may be wrong or the saved book may be damaged. Nothing was changed.`,
+      'unlock-changed': 'The selected book changed while opening. Choose its recovery file again. Nothing was changed.'
+    };
+    status(unlockErrors[err.message] || (err.message === 'conflict' ?
       'Save not confirmed: this vault changed elsewhere. Your input is still here. Export a backup if needed, then reload the saved vault and unlock again.' :
       err.message === 'quota' ? 'Save not confirmed: host storage quota reached. Your input is still here.' :
-      'Action not confirmed. Check your recovery file or host connection. A timed-out write may have reached storage; reload before retrying.');
+      'Action not confirmed. Check your recovery file or host connection. A timed-out write may have reached storage; reload before retrying.'));
     $('status').focus({ preventScroll: true });
     $('status').scrollIntoView({ block: 'start', behavior: 'instant' });
   } finally {
@@ -304,6 +312,7 @@ function render() {
   $('creation').hidden = state !== 'recovery';
   $('reload-vault').hidden = !host || !!pendingCreation || state === 'loading';
   $('locked').hidden = state !== 'locked';
+  $('locked-heading').textContent = `Your ${scope === 'business' ? 'Business' : 'Personal'} book is locked.`;
   $('book').hidden = !unlocked;
   $('book-intro').hidden = unlocked;
   $('book-map').hidden = unlocked || !loaded || !!pendingCreation;
@@ -450,16 +459,30 @@ $('lock').addEventListener('click', () => run(async () => {
       'Without a recovery file you cannot unlock this vault. Lock anyway?')) return;
   lock();
 }));
-$('unlock').addEventListener('change', e => run(async () => {
-  const result = await unlockVault(envelope, await jsonFile(e.target.files[0]));
-  key = result.key;
-  doc = result.document;
-  recoverySaved = true;
+$('unlock').addEventListener('change', e => {
+  const file = e.target.files[0];
+  // Clear every selection so the same file can be chosen after a failed attempt.
   e.target.value = '';
-  render();
-  status('Your book is open.');
-  revealBook();
-}));
+  if (!file) return;
+  void run(async () => {
+    const pending = { envelope, scope, etag };
+    let recovery, result;
+    try { recovery = await jsonFile(file); } catch { throw Error('unlock-file'); }
+    if (recovery?.format === 'passport-vault-v1') throw Error('unlock-backup');
+    if (!recovery || recovery.format !== 'passport-recovery-v1' ||
+        Object.keys(recovery).sort().join(',') !== 'format,key,vaultId' ||
+        typeof recovery.vaultId !== 'string' || typeof recovery.key !== 'string') throw Error('unlock-file');
+    if (recovery.vaultId !== pending.envelope?.vaultId) throw Error('unlock-wrong-book');
+    try { result = await unlockVault(pending.envelope, recovery); } catch { throw Error('unlock-failed'); }
+    if (scope !== pending.scope || envelope !== pending.envelope || etag !== pending.etag) throw Error('unlock-changed');
+    key = result.key;
+    doc = result.document;
+    recoverySaved = true;
+    render();
+    status('Your book is open.');
+    revealBook();
+  });
+});
 for (const id of ['restore', 'restore-open']) $(id).addEventListener('change', e => run(() =>
   restore(e.target.files[0])));
 $('entry-form').addEventListener('submit', e => {

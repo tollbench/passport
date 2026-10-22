@@ -185,10 +185,10 @@ with tempfile.TemporaryDirectory(prefix='passport-hosted-') as tmp, ThreadingHTT
     # Reload persists only ciphertext; wrong recovery and tampered ciphertext fail closed.
     page.reload();expect(f.locator('#locked')).to_be_visible()
     wrong=json.loads(recovery.read_text());wrong['key']='A'*43+'='
-    expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files({'name':'wrong.json','mimeType':'application/json','buffer':json.dumps(wrong).encode()});expect(f.locator('#status')).to_contain_text('Action not confirmed')
+    expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files({'name':'wrong.json','mimeType':'application/json','buffer':json.dumps(wrong).encode()});expect(f.locator('#status')).to_contain_text('could not open your Personal book')
     expect(f.locator('#book')).to_be_hidden()
     page.evaluate('window.tamper=true');f.locator('#reload-vault').focus();f.locator('#reload-vault').press('Enter');f.locator('dialog').get_by_role('button',name='Continue',exact=True).click()
-    expect(f.locator('#locked')).to_be_visible();expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#status')).to_contain_text('Action not confirmed');expect(f.locator('#book')).to_be_hidden()
+    expect(f.locator('#locked')).to_be_visible();expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#status')).to_contain_text('could not open your Personal book');expect(f.locator('#book')).to_be_hidden()
     page.evaluate('window.tamper=false');f.locator('#reload-vault').focus();f.locator('#reload-vault').press('Enter');f.locator('dialog').get_by_role('button',name='Continue',exact=True).click()
     expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#entries')).to_contain_text('PRIVATE_BODY_CANARY')
     actual=page.frames[1]

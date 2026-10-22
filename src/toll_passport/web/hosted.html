@@ -40,10 +40,10 @@
 </section>
 <section id="locked" class="book-door" hidden>
 <div class="door-lock" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 14V9a6 6 0 0 1 12 0v5"/><rect x="6" y="14" width="20" height="15" rx="3"/><path d="M16 20v4"/></svg></div>
-<div class="eyebrow">SAVED BOOK · LOCKED ON THIS DEVICE</div><h2>Your information is inside.</h2>
+<div class="eyebrow">SAVED BOOK · LOCKED ON THIS DEVICE</div><h2 id="locked-heading">Your book is locked.</h2>
 <p>Open it with the recovery file you saved when you created this book. That file is your key; it stays on this device.</p>
 <label class="file-button unlock-file">Open with recovery file<input id="unlock" type="file" accept=".json,application/json"></label>
-<p class="muted">Look for a file named <strong>passport-recovery.json</strong>. Your saved information will appear after you unlock.</p>
+<p class="muted">Recovery files may all be named <strong>passport-recovery.json</strong>. Personal and Business books can have different keys. Choose the file saved for the book selected above.</p>
 <details class="recovery-help"><summary>Why do I need this file?</summary><p>The host stores your book encrypted and cannot open it or reset its key. Use the recovery file for this book. An encrypted backup alone cannot unlock it.</p></details>
 </section>
 <aside id="book-map" class="book-map" aria-label="What your book can hold">

@@ -154,3 +154,18 @@ lock and scope changes; closing the embedding frame destroys that context.
 
 This release changes hosted presentation only. Host-specific goals, action packs,
 agent operation, contacts/CRM and deployment policy are not part of this public UI.
+
+### Unlock feedback
+
+The locked screen names the currently selected Personal or Business book. An
+embedded host URL's initial scope does not override a later in-frame selection;
+storage requests remain bound to their explicit validated scope.
+
+Unlock reads the selected file locally. Its JSON format identifies an encrypted
+backup versus a recovery file, and its vault ID identifies a different book's
+recovery file. These cases show specific recovery-file instructions. A failed
+local decrypt does not report a host write timeout or suggest that a write may
+have happened. Unlock sends no storage request. Cancellation is a no-op, and the
+file input resets on every attempt so the same file can be selected again.
+No recovery key or file is persisted by this change; trusted-device unlocking
+remains a separate unimplemented capability.

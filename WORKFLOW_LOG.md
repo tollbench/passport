@@ -316,3 +316,34 @@ correction changed the sdist to 3f39e5e5. Full hashes/links are recorded in the
 release receipt. All owned changes are committed; no site operations or owner
 recovery-file access occurred. Ops received the exact a13 pin and hashes for the
 separate root-authorized application rollout.
+
+## 2026-10-22 — Scoped hosted unlock feedback and retry correction
+
+Root directly delegated a reported recovery-file failure to answer_reuse_core.
+Owner: Steven Ochs / Tollbench. Jev retired; no Factory routing is claimed.
+Isolated branch `codex/passport-unlock-feedback-20261022` starts at public source
+`0104f13`. No shared/private application source or owner files were modified.
+
+Read-only tracing found an outer initial Personal URL with inner Business selected
+is supported: the host uses each validated request's explicit scope. The actual
+reported selection was an encrypted backup, while the unlock control requires
+the separate recovery file. The public UI replaced that local failure with a
+misleading generic host/write-timeout message, and retained a failed file input.
+
+Added a scope-specific locked heading, filename ambiguity guidance, local
+format/vault-ID checks and explicit backup/wrong-book/invalid-file/decrypt
+messages. Selection resets before reading so failure can be retried; cancellation
+is a no-op. The unlock result is bound to the captured scope/envelope/etag before
+adoption. No crypto format, persistence, restore, automatic scope selection or
+device convenience changes. Pure unlock failures perform no network/storage write.
+
+Verification: new 390px synthetic dual-book browser fixture passed; existing hosted
+browser acceptance passed. Added the focused fixture to installed-wheel CI. Test
+files remain temporary and synthetic; no owner recovery files, live app records,
+paid model/provider calls or remote application changes. No publish performed.
+
+Next: root review of exact diff; coordinate the next package version with separate
+trusted-device work, then required source/release CI and reviewed publication.
+No current device-unlock capability is claimed. Relevant future integration hooks
+are the hosted local key/document lifecycle and isolated scope-bound storage;
+keys must remain outside the ordinary host/message channels.
