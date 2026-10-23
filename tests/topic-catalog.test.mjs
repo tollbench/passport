@@ -15,3 +15,23 @@ test('answer format and choice labels/values must match exactly',async()=>{let{d
 test('removed classification saves new unclassified answer and preserves original facts without leaking IDs',async()=>{let{doc,c,classification}=await fixture();doc=answer(doc,c,classification);const original=JSON.stringify(doc.entries.at(-1)),sent=[];const session=new QuestionBatch({context:c,release:async a=>{sent.push(a);return{receiptId:'one'};}},()=>({document:doc,scope:c.scope}),async next=>doc=next);await session.prepare([{id:'q',value:'Human edit',files:[],shareFiles:[],selected:true,reusable:true,classification:null,source:null}]);assert.equal(doc.entries.at(-2).versions[0].fields.classification,null);assert.equal(doc.entries.at(-2).versions[0].fields.label,'');assert.deepEqual(doc.entries.at(-2).versions[0].tags,[]);assert.equal(JSON.stringify(doc.entries.at(-3)),original);await session.release([{id:'q',value:'Human edit',files:[]}]);assert(!JSON.stringify(sent).includes(classification.entityId));});
 test('private save, send and later reuse retain one fact and preserve append-only manual versions',async()=>{let{doc,c,classification}=await fixture();const session=()=>new QuestionBatch({context:c,release:async()=>({receiptId:'one'})},()=>({document:doc,scope:c.scope}),async next=>doc=next);const draft={id:'q',value:'Vegetarian',files:[],shareFiles:[],selected:true,reusable:true,classification,source:null};let s=session();const a=await s.prepare([draft]);await s.prepare([draft]);await s.release(a);let facts=()=>doc.entries.filter(e=>e.versions.at(-1).kind==='answer');assert.equal(facts().length,1);assert.equal(facts()[0].versions.length,1);const id=facts()[0].id;for(let i=0;i<2;i++){c={...c,taskId:'later:'+i};const hit=findTopicAnswer(doc,c,q,classification);assert(hit);s=session();await s.prepare([{...draft,reusable:false,source:hit.provenance}]);assert.equal(facts().length,1);assert.equal(facts()[0].versions.length,1);assert.equal(facts()[0].versions[0].fields.classification.taskBinding.scope,'reusable');}s=session();await s.prepare([{...draft,value:'Vegan',source:null}]);assert.equal(facts().length,1);assert.equal(facts()[0].id,id);assert.equal(facts()[0].versions.length,2);assert.equal(facts()[0].versions[0].fields.value,'Vegetarian');assert.equal(findTopicAnswer(doc,c,q,classification).value,'Vegan');});
 test('podcast preferences never match food or audience; explicit conflict save preserves all prior records',async()=>{let{doc,c,classification}=await fixture();doc=answer(doc,c,classification);doc=answer(doc,c,classification,'Different');const before=JSON.stringify(doc.entries);const session=new QuestionBatch({context:c},()=>({document:doc,scope:c.scope}),async next=>doc=next);await session.prepare([{id:'q',value:'Owner answer',files:[],shareFiles:[],selected:true,reusable:true,classification,source:null}]);assert.equal(doc.entries.filter(e=>e.versions.at(-1).kind==='answer').length,3);assert.equal(JSON.stringify(doc.entries.slice(0,JSON.parse(before).length)),before);assert.equal(findTopicAnswer(doc,c,q,classification),null);doc=addEntry(doc,{kind:'passport.entity',title:'Campaign',fields:{name:'Campaign',entityKind:'project'}});const project=doc.entries.at(-1).id,podcast=classificationFor(doc,c,q,'project.podcast_preferences',project,true);doc=answer(doc,c,podcast,'Business podcasts');assert.equal(findTopicAnswer(doc,c,q,podcast).value,'Business podcasts');assert.equal(findTopicAnswer(doc,c,q,classification),null);const audience=classificationFor(doc,c,q,'project.target_audience',project,true);assert.equal(findTopicAnswer(doc,c,q,audience),null);});
+
+test('explicit context identifiers isolate otherwise identical facts without text inference',async()=>{
+ let{doc,c,person}=await fixture();
+ c.matching.requests[0].contextKey='investor-introduction';
+ assert(validateBatchContext(c));
+ const cl=classificationFor(doc,c,q,'person.food_preference',person,true);
+ doc=answer(doc,c,cl,'Vegetarian');
+ assert.equal(findTopicAnswer(doc,c,q,cl).value,'Vegetarian');
+ const other={...c,matching:{...c.matching,requests:[{questionId:'q',requestType:'person.food_preference',contextKey:'family-dinner'}]}};
+ assert.equal(findTopicAnswer(doc,other,q,cl),null);
+ assert.equal(findTopicAnswer(doc,context(),q,cl),null);
+ other.matching.requests[0].contextKey='arbitrary words are not an identifier';
+ assert(!validateBatchContext(other));
+});
+
+test('original-question disclosure is bounded and contains only named question text',()=>{
+ const c=context();c.questions=[{...q,recipients:[{id:'one',name:'One'}],originals:[{agent:'One',title:'Original wording'}]}];
+ assert(validateBatchContext(c));
+ c.questions[0].originals[0].secret='not part of the protocol';assert(!validateBatchContext(c));
+});

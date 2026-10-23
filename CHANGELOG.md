@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0a15
+
+- Autofill a unique compatible saved answer for a unique entity using exact public tags. No AI or fuzzy matching.
+- Clickable topic/source controls expose alternatives and clear; edits and cleared answers stay respected.
+- Optional context keys isolate reusable facts. Explicitly grouped question originals remain visible.
+- Matching-enabled shared batches send with one explicit Send to the displayed audience; failed private saves still block release.
+- Synthetic mobile regression covers sources, edits, save failure, no pre-send disclosure and lock cleanup.
+
+
 ## 0.1.0a14
 
 - Explain encrypted backups selected for unlock, recovery files from another book, invalid files and failed local decryption with scope-specific instructions. Pure unlock failures no longer suggest a timed-out storage write.

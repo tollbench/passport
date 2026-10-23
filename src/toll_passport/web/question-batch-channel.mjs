@@ -27,7 +27,7 @@ export function validateBatchContext(v) {
   const ids = new Set();
   for (const q of v.questions) {
     const qKeys = ['id', 'digest', 'title', 'format', 'label', 'options'];
-    if (!(exact(q, qKeys) || exact(q, [...qKeys, 'recipients'])) || !text(q.id, 100) || ids.has(q.id) ||
+    if (!(exact(q, qKeys) || exact(q, [...qKeys, 'recipients']) || exact(q, [...qKeys, 'recipients', 'originals'])) || !text(q.id, 100) || ids.has(q.id) ||
         !/^[a-f0-9]{64}$/.test(q.digest) || !text(q.title, 500) || !formats.has(q.format) ||
         !(q.label === null || typeof q.label === 'string' && /^[a-z][a-z0-9_]{0,63}$/.test(q.label)) || !Array.isArray(q.options)) return false;
     if (Object.hasOwn(q, 'recipients')) {
@@ -38,6 +38,7 @@ export function validateBatchContext(v) {
         recipients.add(r.id);
       }
     }
+    if (Object.hasOwn(q,'originals') && (!Array.isArray(q.originals) || !q.originals.length || q.originals.length>64 || !q.originals.every(o=>exact(o,['agent','title'])&&text(o.agent,200)&&text(o.title,500)))) return false;
     ids.add(q.id);
     if (['single_choice', 'multiple_choice'].includes(q.format)) {
       if (!q.options.length || q.options.length > 50) return false;
