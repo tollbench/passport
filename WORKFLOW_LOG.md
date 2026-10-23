@@ -380,3 +380,7 @@ Root and the operations worker received the exact public artifact paths/hashes
 and integration pin. No private application source, owner data, real recovery
 files, live browser state or site deployment was touched. Publication is complete;
 site package integration belongs to the separately authorized operations task.
+
+
+## 2026-10-23 — deterministic inline question autofill
+Steven approved automatic saved-answer filling, clickable source tags and duplicate-question grouping, explicitly forbidding AI matching. Implemented directly by Codex in an isolated source checkout; no delegated worker or Factory execution is claimed. Existing encrypted client/channel and release workflow are reused. 69 Node tests and two synthetic mobile browser scenarios passed before packaging; additional release checks are recorded in the deployment receipt. No owner book was opened or modified. Source/choice matching is exact; contexts and ambiguous entities are never guessed. Production is not marked complete by this source commit.

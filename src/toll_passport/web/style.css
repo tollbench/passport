@@ -115,3 +115,9 @@
 .hosted-book .file-button { position:relative; }
 .hosted-book .file-button input[type=file] { position:absolute; width:1px!important; height:1px; overflow:hidden; opacity:0; clip-path:inset(50%); }
 .hosted-book .upload-limit { font-size:10px; margin:8px 0 0; }
+
+/* Inline question chips reuse the book's disclosure and button language. */
+.topic-controls > .topic-chip { color:var(--purple); cursor:pointer; overflow-wrap:anywhere; }
+.topic-controls > div { padding-top:12px; }
+.topic-controls p { overflow-wrap:anywhere; }
+.batch-question > .muted { font-size:12px; }

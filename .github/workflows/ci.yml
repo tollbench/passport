@@ -63,4 +63,5 @@ jobs:
           python tests/browser_questions.py
           python tests/browser_batches.py
           python tests/browser_topics.py
+          python tests/browser_autofill.py
           python tests/browser_items.py
