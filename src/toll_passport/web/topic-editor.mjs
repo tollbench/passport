@@ -19,6 +19,7 @@ export function mountTopicControls(root,row,{context,state,save,run,onChange=()=
   const note=node('p');note.className='muted';body.append(source,choices,clear,topicLabel,entityLabel,create,remove);root.append(box,note);
   let autoValue=null,humanEdited=false,entityId='',removed=false,explicitSource=false,entityChosen=false;
   const empty=()=>q.format==='multiple_choice'?[]:'';
+  const readable=value=>(Array.isArray(value)?value:[value]).map(v=>q.options.find(o=>o.value===v)?.label||v).join(', ');
   const currentEntities=()=>{const d=topicDescriptor(topic.value),doc=state().document;return d&&doc?localEntities(doc,d.entityKind):[];};
   function clearSource(){draft.source=null;source.hidden=true;sourceText.textContent='';onChange();}
   function entities(){
@@ -33,7 +34,7 @@ export function mountTopicControls(root,row,{context,state,save,run,onChange=()=
   function use(candidate,explicit=false){
     explicitSource=explicit;if(explicit)entityChosen=true;
     humanEdited=false;autoValue=JSON.parse(JSON.stringify(candidate.value));row.setValue(autoValue);draft.source=candidate.provenance;
-    sourceText.textContent=`${Array.isArray(candidate.value)?candidate.value.join(', '):candidate.value} · Version ${candidate.provenance.version} · ${new Date(candidate.provenance.createdAt).toLocaleDateString()} · ${candidate.provenance.question}`;source.hidden=false;
+    sourceText.textContent=`${readable(candidate.value)} · Version ${candidate.provenance.version} · ${new Date(candidate.provenance.createdAt).toLocaleDateString()} · ${candidate.provenance.question}`;source.hidden=false;
     note.textContent='Filled from Passport. You can change this answer.';onChange();
   }
   function describe(){
@@ -44,14 +45,14 @@ export function mountTopicControls(root,row,{context,state,save,run,onChange=()=
     if(!d){note.textContent='No topic supplied. Answer normally, or choose a topic.';return;}
     if(!classified){note.textContent=currentEntities().length>1?'Choose who this answer is about.':'No saved answer. You can answer normally.';return;}
     const candidates=findTopicCandidates(doc,context,q,classified).filter(c=>c.eligible);
-    for(const c of candidates){const entry=node('div'),words=node('p',`${Array.isArray(c.value)?c.value.join(', '):c.value} — ${c.provenance.question}`),button=node('button','Use this saved answer');button.type='button';button.className='secondary';button.addEventListener('click',()=>{use(c,true);box.open=false;});entry.append(words,button);choices.append(entry);}
+    for(const c of candidates){const entry=node('div'),words=node('p',`${readable(c.value)} — ${c.provenance.question}`),button=node('button','Use this saved answer');button.type='button';button.className='secondary';button.addEventListener('click',()=>{use(c,true);box.open=false;});entry.append(words,button);choices.append(entry);}
     if(!draft.source)note.textContent=humanEdited?'Your answer will be sent as written.':candidates.length>1?'Choose a saved answer, or write your own.':candidates.length?'Saved answer available in the topic menu.':'No matching saved answer. You can answer normally.';
   }
   function apply(){
     const doc=state().document;clearSource();
     if(autoValue!==null&&!humanEdited&&same(draft.value,autoValue))row.setValue(empty());
     autoValue=null;draft.classification=doc?classificationFor(doc,context,q,topic.value,entityId,draft.reusable):null;
-    describe();
+    describe();onChange();
     if(!draft.classification||humanEdited||!same(draft.value,empty()))return;
     const candidate=findTopicAnswer(doc,context,q,draft.classification);if(candidate)use(candidate);
   }

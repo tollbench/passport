@@ -142,7 +142,7 @@ export function mountQuestionBatch(root, channel, {state,save,run,filesValue}) {
           input.addEventListener('change',()=>{row.topic?.edited();draft.value=q.format==='multiple_choice'?[...section.querySelectorAll('input[type=checkbox][name]')].filter(x=>x.checked).map(x=>x.value):o.value;sent=false;});}
       }
       if(context.matching){const controls=node('div');section.insertBefore(controls,section.children[1]);row.topic=mountTopicControls(controls,row,{context,state,save,run,onChange:updateFilled});}
-      const reusableLabel=node('label'),reusable=node('input');reusable.type='checkbox';reusableLabel.append(reusable,document.createTextNode(context.matching?' Remember my answer in Passport for future tasks':' Remember this answer for future tasks using this book'));section.append(reusableLabel);reusable.addEventListener('change',()=>{draft.reusable=reusable.checked;});
+      const reusableLabel=node('label'),reusable=node('input');reusable.type='checkbox';reusableLabel.append(reusable,document.createTextNode(context.matching?' Remember my answer in Passport for future tasks':' Remember this answer for future tasks using this book'));section.append(reusableLabel);row.reusableLabel=reusableLabel;row.reusableInput=reusable;reusable.addEventListener('change',()=>{draft.reusable=reusable.checked;});
       const attachments=node(context.matching?'details':'div'),attachmentsTitle=node('summary','Add files (optional)');if(context.matching)attachments.append(attachmentsTitle);section.append(attachments);
       const fileLabel=node('label','Upload information privately'),upload=node('input');upload.type='file';upload.multiple=true;fileLabel.append(upload);attachments.append(fileLabel);
       const fileList=node('div');attachments.append(fileList,node('p','Uploads stay private unless you select them below. Sharing is limited to 2 MiB per file, 3 files and 5 MiB total.'));
@@ -163,7 +163,7 @@ export function mountQuestionBatch(root, channel, {state,save,run,filesValue}) {
     if(context.matching)editor.append(node('p',shared?'Each included answer and selected file goes only to Tollbench and the named agents beside that question. Future sharing is off.':`${context.purpose}. Sending gives Tollbench and ${context.recipient.name} the included answers and selected files. Other book information stays private; answers are not carried to other agents.`));
     editor.append(savePrivate,review);
   }
-  function updateFilled(){const n=rows.filter(r=>r.draft.source).length;filled.textContent=n?`Passport filled ${n} ${n===1?'answer':'answers'}. Review before sending.`:'';}
+  function updateFilled(){for(const r of rows){if(context.matching&&r.reusableLabel){r.reusableLabel.hidden=!r.draft.classification;if(!r.draft.classification){r.draft.reusable=false;r.reusableInput.checked=false;}}}const n=rows.filter(r=>r.draft.source).length;filled.textContent=n?`Passport filled ${n} ${n===1?'answer':'answers'}. Review before sending.`:'';}
   const drafts=()=>rows.map(r=>({...clone(r.draft),selected:r.draft.selected&&validValue(r.q,r.draft.value)}));
   const refresh=()=>{
     const value=state(),available=!!value.document&&value.scope===context.scope;
