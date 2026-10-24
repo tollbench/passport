@@ -504,6 +504,17 @@ The earlier explicit-Save wheel/sdist hashes remain an unpublished reviewed
 candidate, superseded by this required release-gate repair. No tag or PyPI
 publish occurred before the fix.
 
+Publication receipt: reviewed guard correction `4507eea` passed exact-source
+CI 40126475960 and the combined actual-CSP host fixture before tagging.
+Annotated `v0.1.0a16` peels to `4507eea`; its GitHub prerelease contains the
+reviewed wheel, sdist and SHA256SUMS. Tag-bound Trusted Publishing run
+40126689853 passed. Downloaded CI distributions and PyPI files matched the
+reviewed wheel SHA256 `e13c22cedadfccc56556b634f663f1dd82a9be308b33fc986c1f965e44469994`
+and sdist SHA256 `61a644879d5c9b9de9da144488368adbf08e365515bd6173a6faebfb1254b5bd`.
+A fresh isolated installation of the public wheel matched all 26 committed
+web assets. Staging/site activation is separately owned; no live book, server,
+credential or provider was touched here.
+
 ## 2026-10-24 — Ordinary Q&A candidate (not published)
 
 Requested outcome: one ordinary native-looking question sheet before and after optional Passport connection; explicit Save remains separate; no second review form. Owner: directly authorized Astra high worker `/root/guest_feed_fix`; root coordinated review. Factory/Jev selection not claimed (retired by explicit instruction). Isolated branch `codex/native-questions-20261024`, base `4507eea6ee38644592603758ca89afc601820469`. No release version, wheel publication, installation, remote mutation, owner data or paid/model calls.
@@ -546,3 +557,9 @@ CI40139079182 passed both Node/build/installed-wheel matrices and all9 prior bro
 Second CI40139284864 passed the batch/Save/topic/Lock ordinary-sheet cases but the single-channel reload fill raced the bootstrap HTML: generic textarea matched its3 initial controls before questions-only replaced them. Narrowed that one fill to `.batch-question textarea`, which waits for the actual initialized question row. No runtime change or weakened assertion; root immediately notified. The public wheel and frozen bundle remain identical. No tag/publication yet.
 
 Root requested auditing remaining bootstrap/message ordering in the same fixture. DOM heading visibility precedes asynchronous view-ready/connection messages; added exact receipt waits before existing initial batch/single readiness and locked-connection assertions. Other text fields are protected by awaited connected/value states; single reload now scopes the actual question row. Assertions retained; no runtime changes or added test scope.
+
+### a17 official publication verified
+
+Root accepted final test-only source `4c797d2657f8c0d453028ac642c0ff1d992c5c2f` and revised sdist `7fd274cb1aa7c38186a46521d93c741068b9d24d19eb5ef30101f786d97d019e`. Full exact-source CI40139544381 passed both Python matrices and all10 browser families. Annotated v0.1.0a17 peels to that source; prerelease assets match. Tag-bound Trusted Publishing40139941691 passed build+publish. Independently downloaded public wheel and sdist equal both reviewed local bytes and downloaded workflow distributions. Wheel SHA256 remains `74d6d0d44ad2eaeac5c4fbce086f59b36bf16a1746d76716c2f00159692a9d57`; fresh isolated public installation reports a17 and all web assets match source. PyPI provenance publisher/subject hashes and published certificate source/tag/run bindings checked; transparency entries present. Verification files are under `/private/tmp/passport-a17-public-verification-20261024`. No independent Sigstore trust-root audit claimed.
+
+Ops/root received immutable tag, CI/publish IDs, public wheel path/hash and unchanged frozen bundle manifest c3ed9e7a4f7379167a04bc0a65f321f5845ae5df5f284b0135b9d4f2d89fa703. Staging activation belongs to ops under root's separate GO; this worker made no site/production changes. Root explicitly authorized preserving canonical db9cc75 and integrating source to default main. Only merge conflict was append-only WORKFLOW_LOG; preserved the entire existing a16 receipt before the entire a17 log. Added official a17 receipt and current README/changelog status; no runtime edits. Exact release tag/artifacts remain immutable. No force/reset/stash or credential access.

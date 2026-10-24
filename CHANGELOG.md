@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0a17 (candidate, not published)
+## 0.1.0a17
 
 - Present optional Passport connection in one ordinary question sheet, with manual answers available before connection, inline scope/source/recipient details, compact attachments, and one explicit Send. Save to Passport remains a separate action.
 - Preserve manual edits across connection and bounded host-to-private draft handoff; refuse stale or ambiguous context and require authenticated readiness support from the host.

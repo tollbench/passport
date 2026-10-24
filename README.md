@@ -4,11 +4,11 @@
 
 Passport is an independent, open-source personal-information vault from Toll Bench. It encrypts information in your browser and lets you export selected information as a separately encrypted package. The standalone application runs locally without an account, AI provider, telemetry or cloud storage. A separate hosted client connects encrypted storage to an authenticated host through an isolated frame.
 
-**Status: 0.1.0a16 published; 0.1.0a17 source candidate, reference alpha. Not independently security-audited.** Includes the standalone reference application and a separate hosted client component. Use sample information while evaluating it. Standalone behavior is unchanged. See [hosted embedding and security responsibilities](docs/HOSTED.md).
+**Status: 0.1.0a17 published, reference alpha. Not independently security-audited.** Includes the standalone reference application and a separate hosted client component. Use sample information while evaluating it. Standalone behavior is unchanged. See [hosted embedding and security responsibilities](docs/HOSTED.md).
 
 ## Run it
 
-Install the published release: `python -m pip install toll-passport==0.1.0a16`, then `toll-passport serve`. See the [verified release receipt](docs/RELEASE_RECEIPT.md).
+Install the published release: `python -m pip install toll-passport==0.1.0a17`, then `toll-passport serve`. See the [verified release receipt](docs/RELEASE_RECEIPT.md).
 
 Python 3.9 or later and a current browser with Web Crypto and IndexedDB are required. From a source checkout:
 
@@ -19,7 +19,7 @@ python -m pip install .
 toll-passport serve
 ```
 
-Open **http://127.0.0.1:8765**. Keep that exact address and port: browser storage is scoped to its origin. A different port or `localhost` is a different storage location. Install a released wheel with `python -m pip install path/to/toll_passport-0.1.0a16-py3-none-any.whl`. A GitHub release does not imply availability on PyPI; check the release notes.
+Open **http://127.0.0.1:8765**. Keep that exact address and port: browser storage is scoped to its origin. A different port or `localhost` is a different storage location. Install a released wheel with `python -m pip install path/to/toll_passport-0.1.0a17-py3-none-any.whl`. A GitHub release does not imply availability on PyPI; check the release notes.
 
 ## Standalone capabilities
 
