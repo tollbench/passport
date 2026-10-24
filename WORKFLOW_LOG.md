@@ -490,3 +490,16 @@ sdist SHA256
 Earlier autosave artifact hashes remain historical and are superseded. No
 publication, deployment, live owner data, or provider call occurred. The
 root coordinator owns host pinning and the combined browser integration gate.
+
+Publication gate follow-up: after Steven approved a16 publication, the exact
+source was fast-forwarded to official main. CI run 40126157600 passed its Node,
+build and installed-wheel checks but failed the legacy opaque hosted-browser
+scenario before tagging. A sandboxed iframe has serialized `window.origin`
+`null` while `location.origin` still reports its URL origin. The new dedicated
+origin guard had used `location.origin` and refused the old opaque host. The
+guard now tests the serialized origin; the existing synthetic opaque-host
+browser flow passed, including ciphertext transport, wrong-key and CSP checks.
+The test's exact module-request allowlist was updated for the new a16 assets.
+The earlier explicit-Save wheel/sdist hashes remain an unpublished reviewed
+candidate, superseded by this required release-gate repair. No tag or PyPI
+publish occurred before the fix.

@@ -15,7 +15,9 @@ import { connectHost } from './hosted-bridge.mjs';
 import { ALLOWED_PARENT_ORIGINS } from './client-policy.mjs';
 import { createDeviceMemory, indexedDbDeviceStorage } from './device-memory.mjs';
 import { createOwnerLockChannel } from './device-lock-channel.mjs';
-if (location.origin !== 'null' && !ALLOWED_PARENT_ORIGINS.length)
+// A sandboxed opaque frame keeps the URL's origin in location.origin. The
+// serialized browsing-context origin is null, which preserves the legacy host.
+if (window.origin !== 'null' && !ALLOWED_PARENT_ORIGINS.length)
   throw Error('Dedicated Passport origin is not configured.');
 import { connectQuestionHost } from './question-channel.mjs';
 import { mountQuestionAnswer } from './question-answer.mjs';
