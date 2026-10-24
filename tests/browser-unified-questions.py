@@ -330,7 +330,7 @@ console.log(JSON.stringify(out));"""
         }""",{'envelope':row['envelope'],'recovery':row['recovery']})
         single.evaluate("document.getElementById('passport').src+='&again=1'")
         sf=single.frame_locator('#passport')
-        sf.locator('textarea').fill('SYNTHETIC_SINGLE_ANSWER')
+        sf.locator('.batch-question textarea').fill('SYNTHETIC_SINGLE_ANSWER')
         sf.get_by_text('Not saved to Passport. Only in this form.').wait_for(timeout=10000)
         sf.locator('[data-question-send]').click()
         single.wait_for_function("received.filter(v=>v.type==='release').length===1")
