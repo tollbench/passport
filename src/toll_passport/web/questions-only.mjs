@@ -138,7 +138,8 @@ else {
     if (!document)return;
     const own=savedDraft(document,context,row.q,row.scope)?.fields.answerEntryId;
     const hits=exactSuggestions(document,row.topicRemoved?{...context,matching:null}:context,
-      row.q,row.scope,{entityId:row.entityId}).filter(hit=>hit.source.entryId!==own);
+      row.topicRemoved?{...row.q,label:null}:row.q,row.scope,{entityId:row.entityId})
+      .filter(hit=>hit.source.entryId!==own);
     if (!hits.length)return;
     row.suggestions.append(el('strong','From your Passport'));
     for (const hit of hits.slice(0,8)) {
