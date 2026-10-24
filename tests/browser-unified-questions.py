@@ -1,10 +1,12 @@
 """Focused local browser fixture; mocked parent sends no real vault or provider calls."""
 from pathlib import Path
 import json
+import os
+from importlib.resources import files
 import subprocess
 from playwright.sync_api import sync_playwright, expect
 
-ROOT = Path(__file__).resolve().parents[1] / 'src/toll_passport/web'
+ROOT = Path(os.environ.get('PASSPORT_WEB_ROOT',str(files('toll_passport').joinpath('web'))))
 CONTEXT = {
     'requestId': '11111111-1111-4111-8111-111111111111', 'token': 'synthetic-signed',
     'scope': 'personal', 'subject': 'subject:personal',
@@ -85,12 +87,13 @@ window.addEventListener('message',event=>{
 </script></body></html>"""
 
 def main():
-    node='/private/tmp/toll-passport-venv/lib/python3.9/site-packages/playwright/driver/node'
+    node=os.environ.get('PASSPORT_NODE','node')
     create="""import {createVault,exportRecovery} from './src/toll_passport/web/vault.mjs';
 let out={};for(const scope of ['personal','business']){const v=await createVault();
 out[scope]={envelope:v.envelope,etag:'v1',recovery:await exportRecovery(v.key,v.document.vaultId)};}
 console.log(JSON.stringify(out));"""
-    fixtures=json.loads(subprocess.check_output([node,'--input-type=module','-e',create],cwd=ROOT.parents[2]))
+    create=create.replace('./src/toll_passport/web/vault.mjs',(ROOT/'vault.mjs').as_uri())
+    fixtures=json.loads(subprocess.check_output([node,'--input-type=module','-e',create]))
     public={scope:{'envelope':row['envelope'],'etag':row['etag']} for scope,row in fixtures.items()}
     html = PARENT.replace('CONTEXT', json.dumps(CONTEXT)).replace('ENVELOPES',json.dumps(public))
     single_html = PARENT.replace('CONTEXT', json.dumps(SINGLE)).replace('ENVELOPES',json.dumps(public))
@@ -107,9 +110,9 @@ console.log(JSON.stringify(out));"""
           {'questionId':'two','requestType':None,'contextKey':'company-profile'}]}}
     topic_html=PARENT.replace('CONTEXT',json.dumps(topic_context)).replace('ENVELOPES',json.dumps(public))
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True,
-            executable_path='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-            args=['--no-sandbox'])
+        options={'headless':True}
+        if os.environ.get('PASSPORT_CHROME'):options['executable_path']=os.environ['PASSPORT_CHROME']
+        browser = playwright.chromium.launch(**options)
         page = browser.new_page(ignore_https_errors=True, viewport={'width': 760, 'height': 700})
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))

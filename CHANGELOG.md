@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0a17 (candidate, not published)
+
+- Present optional Passport connection in one ordinary question sheet, with manual answers available before connection, inline scope/source/recipient details, compact attachments, and one explicit Send. Save to Passport remains a separate action.
+- Preserve manual edits across connection and bounded host-to-private draft handoff; refuse stale or ambiguous context and require authenticated readiness support from the host.
+- Scrub vault-derived answers and source details on Lock, including edited and propagated values. Preserve independent manual drafts and existing signed, idempotent release validation.
+
 ## 0.1.0a16
 
 - Add a dedicated-origin, questions-only Passport view with separate encrypted Personal and Business books, exact saved-answer suggestions, and an explicit Save to Passport action. Edits stay in the current form until Save; Review and Send can release selected unsaved answers without adding them to the private book.
