@@ -196,6 +196,7 @@ console.log(JSON.stringify(out));"""
         expect(frame.locator('.question-source').first).to_contain_text('For Synthetic Agent')
         assert frame.get_by_role('dialog').count()==0
         frame.locator('[data-question-send]').click()
+        page.wait_for_function("received.filter(v=>v.type==='release').length===1")
         assert page.evaluate("received.filter(v=>v.type==='release').length") == 1
         assert page.evaluate("received.filter(v=>v.type==='request'&&v.op==='save').length") == 2
         assert page.evaluate("received.find(v=>v.type==='release').answers.map(a=>a.value)") == [
@@ -332,6 +333,7 @@ console.log(JSON.stringify(out));"""
         sf.locator('textarea').fill('SYNTHETIC_SINGLE_ANSWER')
         sf.get_by_text('Not saved to Passport. Only in this form.').wait_for(timeout=10000)
         sf.locator('[data-question-send]').click()
+        single.wait_for_function("received.filter(v=>v.type==='release').length===1")
         assert single.evaluate("received.filter(v=>v.type==='release').length") == 1
         assert single.evaluate("received.filter(v=>v.type==='request'&&v.op==='save').length") == 0
         assert single.evaluate("received.find(v=>v.type==='release').answer") == 'SYNTHETIC_SINGLE_ANSWER'
