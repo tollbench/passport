@@ -116,6 +116,27 @@
 .hosted-book .file-button input[type=file] { position:absolute; width:1px!important; height:1px; overflow:hidden; opacity:0; clip-path:inset(50%); }
 .hosted-book .upload-limit { font-size:10px; margin:8px 0 0; }
 
+/* The isolated question view fills the native sheet without book/setup chrome. */
+.hosted-questions{background:#faf9f5;color:#292631}
+.hosted-questions main{max-width:none;margin:0;padding:16px 18px 36px}
+.hosted-questions h1{font:500 clamp(23px,5vw,32px)/1.2 Georgia,serif;margin:4px 0 10px}
+.hosted-questions h2{font-size:17px;margin:0 0 12px}
+.question-connect{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.question-book-status{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:9px 12px;background:#fff;border:1px solid #ded9e5;border-radius:12px;font-size:12px}
+.question-book-status button{font-size:11px;padding:6px 10px;margin:0}
+.hosted-questions .batch-question{background:#fff;border:1px solid #ded9e5;border-radius:14px;padding:16px;margin:12px 0}
+.hosted-questions .batch-question.question-locked{background:#f5f3f7}
+.hosted-questions .batch-question>label{max-width:230px}
+.hosted-questions .batch-question label{font-size:13px}
+.hosted-questions .batch-question textarea{min-height:84px;resize:vertical}
+.question-suggestions{margin-top:12px}
+.question-suggestion{border-left:3px solid #9d87c8;padding:4px 12px;margin:8px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.question-suggestion p{margin:4px 0}
+.question-actions{display:flex;flex-wrap:wrap;gap:8px;position:sticky;bottom:0;background:#faf9f5;padding:10px 0;border-top:1px solid #ded9e5}
+.question-feedback{font-size:13px;color:#594d70}
+.hosted-questions dialog{width:min(600px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;border:1px solid #ddd5e6;border-radius:18px;padding:20px}
+.hosted-questions dialog::backdrop{background:#28253266}
+
 /* Inline question chips reuse the book's disclosure and button language. */
 .topic-controls > .topic-chip { color:var(--purple); cursor:pointer; overflow-wrap:anywhere; }
 .topic-controls > div { padding-top:12px; }

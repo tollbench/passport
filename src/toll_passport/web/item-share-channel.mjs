@@ -41,7 +41,8 @@ export function validateItemReceipt(v) {
 }
 export function connectItemHost(win = window, {
   timeout = 10000,
-  releaseTimeout = 30000
+  releaseTimeout = 30000,
+  expectedOrigins = []
 } = {}) {
   return new Promise(resolve => {
     if (win.parent === win) {
@@ -66,7 +67,8 @@ export function connectItemHost(win = window, {
       if (closed || event.source !== win.parent) return;
       const v = event.data;
       if (!capability) {
-        if (!validateItemInit(v) || v.nonce !== nonce || !/^https?:\/\//.test(event.origin))
+        if (!validateItemInit(v) || v.nonce !== nonce || !/^https?:\/\//.test(event.origin) ||
+            expectedOrigins.length && !expectedOrigins.includes(event.origin))
           return;
         origin = event.origin;
         capability = v.capability;

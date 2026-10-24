@@ -6,6 +6,12 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const token = v => typeof v === 'string' && /^[A-Za-z0-9_-]{32,128}$/.test(v);
 const etag = v => typeof v === 'string' && /^[\x21-\x7e]{1,256}$/.test(v);
 const scope = v => ['personal', 'business'].includes(v);
+const isHttpsOrigin = v => {
+  try { const u = new URL(v); return u.protocol === 'https:' && u.origin === v; } catch { return false; }
+};
+export const validateStorageIdentity = v => exact(v, ['ownerBinding', 'parentOrigin']) &&
+  typeof v.ownerBinding === 'string' && /^[A-Za-z0-9_-]{22,128}$/.test(v.ownerBinding) &&
+  isHttpsOrigin(v.parentOrigin);
 const exact = (v, fields) => v !== null && typeof v === 'object' && !Array.isArray(v) &&
   Object.keys(v).length === fields.length && fields.every(k => Object.hasOwn(v, k));
 const baseFields = ['protocol', 'type', 'nonce', 'capability', 'id', 'op', 'scope'];
@@ -22,7 +28,16 @@ export const validateEnvelope = v => exact(v, ['format', 'vaultId', 'revision', 
   v.revision > 0 && binary(v.nonce, 12, 12) && binary(v.ciphertext, MAX_VAULT_BYTES, 16);
 export const validateReady = v => exact(v, ['protocol', 'type', 'nonce']) &&
   v.protocol === PROTOCOL && v.type === 'ready' && uuid.test(v.nonce);
-export const validateInit = v => exact(v, ['protocol', 'type', 'nonce', 'capability', 'scopes', 'scope']) &&
+export const validateControl = v => v?.protocol === PROTOCOL && v.type === 'control' &&
+  uuid.test(v.nonce) && token(v.capability) && uuid.test(v.id) &&
+  (v.command === 'lock-all' && exact(v,
+    ['protocol','type','nonce','capability','id','command']) ||
+    v.command === 'open-panel' && exact(v,
+      ['protocol','type','nonce','capability','id','command','panel']) &&
+      ['information','goals','sharing'].includes(v.panel));
+export const validateInit = v => (exact(v, ['protocol', 'type', 'nonce', 'capability', 'scopes', 'scope']) ||
+  exact(v, ['protocol', 'type', 'nonce', 'capability', 'scopes', 'scope', 'storageIdentity']) &&
+    validateStorageIdentity(v.storageIdentity)) &&
   v.protocol === PROTOCOL && v.type === 'init' && uuid.test(v.nonce) && token(v.capability) &&
   Array.isArray(v.scopes) && v.scopes.length >= 1 && v.scopes.length <= 2 &&
   new Set(v.scopes).size === v.scopes.length && v.scopes.every(scope) && v.scopes.includes(v.scope);
@@ -44,11 +59,14 @@ export function validateResult(v) {
 }
 
 /** One parent, pinned origin, one capability, correlated replies. No data network access. */
-export function connectHost(win = window, { timeout = 30000 } = {}) {
+export function connectHost(win = window, { timeout = 30000, expectedOrigins = [] } = {}) {
   return new Promise((resolve, reject) => {
     if (win.parent === win) { reject(Error('embedding-required')); return; }
+    if (!Array.isArray(expectedOrigins) || expectedOrigins.some(v => !isHttpsOrigin(v))) {
+      reject(Error('invalid-origin-policy')); return;
+    }
     const nonce = crypto.randomUUID(), pending = new Map();
-    let origin, capability, scopes, closed = false;
+    let origin, capability, scopes, closed = false, controlHandler = null;
     const send = message => win.parent.postMessage(message, origin || '*');
     const close = () => {
       closed = true;
@@ -61,10 +79,22 @@ export function connectHost(win = window, { timeout = 30000 } = {}) {
       if (closed || event.source !== win.parent) return;
       const v = event.data;
       if (!capability) {
-        if (!validateInit(v) || v.nonce !== nonce || !/^https?:\/\//.test(event.origin)) return;
+        if (!validateInit(v) || v.nonce !== nonce || !/^https?:\/\//.test(event.origin) ||
+            expectedOrigins.length && (!expectedOrigins.includes(event.origin) ||
+              !v.storageIdentity || v.storageIdentity.parentOrigin !== event.origin)) return;
         origin = event.origin; capability = v.capability; scopes = [...v.scopes];
         clearTimeout(timer);
-        resolve({ scopes, scope: v.scope, close, request(op, scope, payload = {}) {
+        resolve({ scopes, scope: v.scope, storageIdentity: v.storageIdentity || null, close,
+          reportViewReady(view) {
+            if (closed || view !== 'questions') throw Error('invalid');
+            send({protocol:PROTOCOL,type:'view-ready',nonce,capability,view});
+          },
+          openBook() {
+            if (closed) throw Error('unavailable');
+            send({protocol:PROTOCOL,type:'open-book',nonce,capability});
+          },
+          setControlHandler(handler) { if (typeof handler !== 'function') throw Error('invalid'); controlHandler=handler; },
+          request(op, scope, payload = {}) {
           if (closed) return Promise.reject(Error('unavailable'));
           const message = { protocol: PROTOCOL, type: 'request', nonce, capability,
             id: crypto.randomUUID(), op, scope, ...payload };
@@ -75,6 +105,13 @@ export function connectHost(win = window, { timeout = 30000 } = {}) {
             send(message);
           });
         }});
+        return;
+      }
+      if (event.origin === origin && validateControl(v) && v.nonce === nonce &&
+          v.capability === capability) {
+        Promise.resolve().then(()=>controlHandler ? controlHandler(v.command,v.panel) : false)
+          .then(ok=>send({protocol:PROTOCOL,type:'control-result',nonce,capability,id:v.id,ok:ok===true}),
+            ()=>send({protocol:PROTOCOL,type:'control-result',nonce,capability,id:v.id,ok:false}));
         return;
       }
       if (event.origin !== origin || !validateResult(v) || v.nonce !== nonce || v.capability !== capability) return;

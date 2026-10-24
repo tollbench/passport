@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Passport — Your private information</title><link rel="stylesheet" href="./style.css"><script type="module" src="./hosted.mjs" crossorigin="anonymous"></script></head>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Passport — Your private information</title><link rel="stylesheet" href="./style.css"><script type="module" src="./entry.mjs" crossorigin="anonymous"></script></head>
 
 <body class="hosted-book">
 
@@ -43,6 +43,7 @@
 <div class="eyebrow">SAVED BOOK · LOCKED ON THIS DEVICE</div><h2 id="locked-heading">Your book is locked.</h2>
 <p>Open it with the recovery file you saved when you created this book. That file is your key; it stays on this device.</p>
 <label class="file-button unlock-file">Open with recovery file<input id="unlock" type="file" accept=".json,application/json"></label>
+<button id="unlock-device" class="secondary" hidden>Unlock this device</button>
 <p class="muted">New recovery files are named <strong>passport-personal-recovery.json</strong> or <strong>passport-business-recovery.json</strong>. Older files may be named <strong>passport-recovery.json</strong>. Choose the recovery file saved for the book selected above.</p>
 <details class="recovery-help"><summary>Why do I need this file?</summary><p>The host stores your book encrypted and cannot open it or reset its key. Use the recovery file for this book. An encrypted backup alone cannot unlock it.</p></details>
 </section>
@@ -83,6 +84,7 @@
 <details id="book-tools"><summary>Recovery, export and vault settings</summary>
 <p class="muted">25 MiB per file. 100 MiB encrypted-vault limit, including encoding and versions. The host may apply a smaller account quota.</p>
 <nav class="toolbar" aria-label="Vault controls"><button id="backup" class="secondary">Export encrypted backup</button><button id="recovery" class="secondary">Save recovery file</button>
+<button id="remember-device" class="secondary" hidden>Remember this device</button><button id="forget-device" class="secondary" hidden>Forget this device</button>
 </nav><p id="usage" class="muted"></p>
 <details><summary>Portability and received information</summary><label class="file-button" for="restore-open">Restore another encrypted backup<input id="restore-open" type="file" accept=".json,application/json"></label><label class="file-button">Open a shared package<input id="receive" type="file" accept=".json,application/json"></label><label class="file-button">Choose that package’s key<input id="receive-key" type="file" accept=".json,application/json"></label><button id="open-release" class="secondary">Preview shared information</button>
 <div id="received">

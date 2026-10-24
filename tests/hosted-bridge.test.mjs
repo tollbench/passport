@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createVault } from '../src/toll_passport/web/vault.mjs';
-import { PROTOCOL, validateEnvelope, validateRequest, validateResult, validateInit, connectHost } from '../src/toll_passport/web/hosted-bridge.mjs';
+import { PROTOCOL, validateEnvelope, validateRequest, validateResult, validateInit,validateControl,connectHost } from '../src/toll_passport/web/hosted-bridge.mjs';
 const nonce = crypto.randomUUID(), capability = 'a'.repeat(32);
 const base = { protocol: PROTOCOL, type: 'request', nonce, capability, id: crypto.randomUUID(), op: 'load', scope: 'personal' };
 const init = { protocol: PROTOCOL, type: 'init', nonce, capability, scopes: ['personal', 'business'], scope: 'personal' };
@@ -10,6 +10,9 @@ test('strict ciphertext-only protocol and scoped snapshot writes', async () => {
   const { envelope } = await createVault();
   assert.equal(validateEnvelope(envelope), true);
   assert.equal(validateInit(init), true);
+  const identity={ownerBinding:'x'.repeat(32),parentOrigin:'https://owner.example'};
+  assert.equal(validateInit({...init,storageIdentity:identity}),true);
+  assert.equal(validateInit({...init,storageIdentity:{...identity,parentOrigin:'https://evil.example/path'}}),false);
   for (const v of [{...init,scopes:['personal','personal']},{...init,scope:'other'},{...init,key:'secret'}]) assert.equal(validateInit(v),false);
   const save = {...base,op:'save',expectedEtag:null,envelope};
   assert.equal(validateRequest(base),true);
@@ -21,6 +24,31 @@ test('strict ciphertext-only protocol and scoped snapshot writes', async () => {
   assert.equal(validateResult({...result,etag:null,envelope:null}),true);
   for (const v of [{...result,etag:null},{...result,envelope:null},{...result,key:'secret'},{...result,ok:false,error:'arbitrary'}]) assert.equal(validateResult(v),false);
   assert.equal(validateResult({...base,type:'result',ok:false,error:'conflict'}),true);
+});
+test('dedicated origin requires exact independently configured parent and storage identity',async()=>{
+  const f=fixture(),promise=connectHost(f.win,{timeout:100,expectedOrigins:['https://owner.example']});
+  const handshake={...init,nonce:f.sent[0].data.nonce};
+  f.emit(handshake);f.emit({...handshake,storageIdentity:{ownerBinding:'x'.repeat(32),parentOrigin:'https://evil.example'}});
+  let settled=false;promise.then(()=>settled=true);await new Promise(r=>setTimeout(r,5));assert.equal(settled,false);
+  f.emit({...handshake,storageIdentity:{ownerBinding:'x'.repeat(32),parentOrigin:'https://owner.example'}});
+  const host=await promise;assert.equal(host.storageIdentity.ownerBinding,'x'.repeat(32));host.close();
+});
+test('view-ready, open-book and fixed panel controls carry no private data',async()=>{
+  const f=fixture(),pending=connectHost(f.win,{timeout:100});
+  f.emit({...init,nonce:f.sent[0].data.nonce});const host=await pending;
+  host.reportViewReady('questions');host.openBook();
+  assert.deepEqual(f.sent.at(-2).data,{protocol:PROTOCOL,type:'view-ready',nonce:f.sent[0].data.nonce,
+    capability,view:'questions'});
+  assert.deepEqual(f.sent.at(-1).data,{protocol:PROTOCOL,type:'open-book',nonce:f.sent[0].data.nonce,capability});
+  host.setControlHandler(async(command,panel)=>command==='open-panel'&&panel==='goals');
+  const good={protocol:PROTOCOL,type:'control',nonce:f.sent[0].data.nonce,capability,
+    id:crypto.randomUUID(),command:'open-panel',panel:'goals'};
+  assert.equal(validateControl(good),true);
+  assert.equal(validateControl({...good,panel:'private-vault'}),false);
+  f.emit({...good,panel:'private-vault'});f.emit(good,{},'https://owner.example');
+  f.emit(good);await new Promise(r=>setTimeout(r,2));
+  assert.deepEqual(f.sent.at(-1).data,{protocol:PROTOCOL,type:'control-result',nonce:good.nonce,
+    capability,id:good.id,ok:true});host.close();
 });
 function fixture() {
   let listener;

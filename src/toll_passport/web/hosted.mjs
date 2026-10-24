@@ -12,6 +12,10 @@ import {
 } from './vault.mjs';
 import { findAnswerCandidates } from './answers.mjs';
 import { connectHost } from './hosted-bridge.mjs';
+import { ALLOWED_PARENT_ORIGINS } from './client-policy.mjs';
+import { createDeviceMemory, indexedDbDeviceStorage } from './device-memory.mjs';
+if (location.origin !== 'null' && !ALLOWED_PARENT_ORIGINS.length)
+  throw Error('Dedicated Passport origin is not configured.');
 import { connectQuestionHost } from './question-channel.mjs';
 import { mountQuestionAnswer } from './question-answer.mjs';
 import { connectBatchHost } from './question-batch-channel.mjs';
@@ -22,14 +26,14 @@ let questionPanel, batchPanel, itemPanel;
 const panels = new Map();
 let pendingPanel = /^#panel-[a-z][a-z0-9-]{0,63}$/.test(location.hash) ? location.hash.slice(1) : null;
 const $ = id => document.getElementById(id);
-let key, doc, envelope, host, scope, etag = null, pendingCreation, loaded = false, sharing, receivedEnvelope, receivedRecovery, busy = false,
+let key, doc, envelope, host, device, scope, etag = null, pendingCreation, loaded = false, sharing, receivedEnvelope, receivedRecovery, busy = false,
   recoverySaved = false, loadFailed = false, pendingRestore = null, libraryKind = 'all',
-  shareGeneration = 0,
+  shareGeneration = 0, vaultGeneration = 0,
   filledAnswer = null, renderedAnswerSignature = null;
 const MAX_FILE = 25 * 1024 * 1024,
   MAX_IMPORT = 145 * 1024 * 1024;
 
-/** Trusted fixed modules inside this opaque page only; never a URL/plugin loader.
+/** Trusted fixed modules inside this isolated page only; never a URL/plugin loader.
  * No encryption key or parent-window access is exposed by this local API.
  */
 export function registerPanel({ id, label, mount }) {
@@ -175,9 +179,7 @@ async function run(fn) {
 }
 
 async function readSaved() {
-  const result = await host.request('load', scope);
-  etag = result.etag;
-  return result.envelope;
+  return host.request('load', scope);
 }
 async function persist(next) {
   const result = await host.request(next ? 'save' : 'delete', scope,
@@ -312,6 +314,9 @@ function render() {
   $('creation').hidden = state !== 'recovery';
   $('reload-vault').hidden = !host || !!pendingCreation || state === 'loading';
   $('locked').hidden = state !== 'locked';
+  $('unlock-device').hidden = state !== 'locked' || !device || !host?.storageIdentity;
+  $('remember-device').hidden = !unlocked || !device || !host?.storageIdentity;
+  $('forget-device').hidden = !unlocked || !device || !host?.storageIdentity;
   $('locked-heading').textContent = `Your ${scope === 'business' ? 'Business' : 'Personal'} book is locked.`;
   $('book').hidden = !unlocked;
   $('book-intro').hidden = unlocked;
@@ -351,7 +356,9 @@ $('cancel-create').addEventListener('click', () => run(() => {
   pendingCreation = null; clearTransient(); render(); status('Creation canceled. No save was requested by canceling.');
 }));
 $('confirm-create').addEventListener('click', () => run(async () => {
+  const generation=vaultGeneration, creation=pendingCreation;
   await persist(pendingCreation.envelope);
+  if (generation!==vaultGeneration || creation!==pendingCreation) throw Error('conflict');
   key = pendingCreation.key; doc = pendingCreation.document; envelope = pendingCreation.envelope;
   pendingCreation = null; recoverySaved = true;
   render(); status('Passport created. Only its encrypted snapshot was saved to the host.');
@@ -366,6 +373,7 @@ async function recovery() {
 }
 
 function lock() {
+  vaultGeneration++;
   clearTransient();
   key = null;
   doc = null;
@@ -386,10 +394,11 @@ async function restore(file) {
   if (!file) return;
   if (!loaded) throw Error('unavailable');
   clearRestore();
-  const before = { scope, etag, envelope };
+  const before = { scope, etag, envelope, generation:vaultGeneration };
   const candidate = await jsonFile(file);
   if (!candidate || candidate.format !== 'passport-vault-v1') throw Error('Not a backup');
-  if (scope !== before.scope || etag !== before.etag || envelope !== before.envelope) throw Error('conflict');
+  if (scope !== before.scope || etag !== before.etag || envelope !== before.envelope ||
+      vaultGeneration!==before.generation) throw Error('conflict');
   pendingRestore = { ...before, candidate };
   $('restore-pending').hidden = false;
   status('Backup selected. Choose its recovery file below.');
@@ -404,7 +413,8 @@ $('restore-recovery').addEventListener('change', event => run(async () => {
   const pending = pendingRestore, file = event.target.files[0];
   event.target.value = '';
   if (!pending || !file) return;
-  const unchanged = () => pendingRestore === pending && scope === pending.scope && etag === pending.etag && envelope === pending.envelope;
+  const unchanged = () => pendingRestore === pending && scope === pending.scope && etag === pending.etag &&
+    envelope === pending.envelope && vaultGeneration===pending.generation;
   const recovered = await unlockVault(pending.candidate, await jsonFile(file));
   if (!unchanged()) throw Error('conflict');
   if (envelope && !await ask('Replace this hosted vault with this backup? Export your current backup first if needed.')) {
@@ -458,6 +468,22 @@ $('lock').addEventListener('click', () => run(async () => {
   if (!recoverySaved && !await ask(
       'Without a recovery file you cannot unlock this vault. Lock anyway?')) return;
   lock();
+  if (device && host?.storageIdentity) await device.lock(host.storageIdentity);
+}));
+$('remember-device').addEventListener('click',()=>run(async()=>{
+  if (!key || !doc || !device || !host?.storageIdentity) throw Error('unavailable');
+  await device.remember(host.storageIdentity,scope,doc.vaultId,key);
+  status('This book can reopen on this browser while device storage remains available. Keep your recovery file.');
+}));
+$('forget-device').addEventListener('click',()=>run(async()=>{
+  if (!device || !host?.storageIdentity) throw Error('unavailable');
+  await device.forget(host.storageIdentity);
+  status('This browser will need recovery files next time. Your open book remains available until you lock.');
+}));
+$('unlock-device').addEventListener('click',()=>run(async()=>{
+  if (!device || !host?.storageIdentity) throw Error('unavailable');
+  await device.unlockDevice(host.storageIdentity);
+  await reloadVault();
 }));
 $('unlock').addEventListener('change', e => {
   const file = e.target.files[0];
@@ -465,7 +491,7 @@ $('unlock').addEventListener('change', e => {
   e.target.value = '';
   if (!file) return;
   void run(async () => {
-    const pending = { envelope, scope, etag };
+    const pending = { envelope, scope, etag, generation:vaultGeneration };
     let recovery, result;
     try { recovery = await jsonFile(file); } catch { throw Error('unlock-file'); }
     if (recovery?.format === 'passport-vault-v1') throw Error('unlock-backup');
@@ -474,7 +500,8 @@ $('unlock').addEventListener('change', e => {
         typeof recovery.vaultId !== 'string' || typeof recovery.key !== 'string') throw Error('unlock-file');
     if (recovery.vaultId !== pending.envelope?.vaultId) throw Error('unlock-wrong-book');
     try { result = await unlockVault(pending.envelope, recovery); } catch { throw Error('unlock-failed'); }
-    if (scope !== pending.scope || envelope !== pending.envelope || etag !== pending.etag) throw Error('unlock-changed');
+    if (scope !== pending.scope || envelope !== pending.envelope || etag !== pending.etag ||
+        vaultGeneration!==pending.generation) throw Error('unlock-changed');
     key = result.key;
     doc = result.document;
     recoverySaved = true;
@@ -666,10 +693,23 @@ $('delete-vault').addEventListener('click', () => run(async () => {
 }));
 async function reloadVault() {
   loaded = false; loadFailed = false; lock(); envelope = null; etag = null; render();
+  const generation=vaultGeneration, requestedScope=scope;
   status('Finding your saved book…');
-  try { envelope = await readSaved(); }
-  catch (error) { loadFailed = true; render(); throw error; }
-  loaded = true; render();
+  let saved;
+  try { saved = await readSaved(); }
+  catch (error) { if (vaultGeneration===generation) {loadFailed = true; render();} throw error; }
+  if (vaultGeneration!==generation || scope!==requestedScope) return;
+  envelope=saved.envelope; etag=saved.etag;
+  loaded = true;
+  if (envelope && device && host?.storageIdentity) {
+    try {
+      const opened=await device.restore(host.storageIdentity,scope,envelope);
+      if (vaultGeneration!==generation || scope!==requestedScope) return;
+      if (opened) {key=opened.key;doc=opened.document;}
+    } catch { /* Recovery remains available after storage loss or an invalid wrapper. */ }
+  }
+  if (vaultGeneration!==generation || scope!==requestedScope) return;
+  render();
   status('');
 }
 $('reload-vault').addEventListener('click', () => run(async () => {
@@ -694,7 +734,21 @@ for (const form of document.querySelectorAll('form')) {
 }
 render();
 await run(async () => {
-  try { host = await connectHost(); } catch (error) { loadFailed = true; render(); throw error; } scope = host.scope;
+  try { host = await connectHost(window,{expectedOrigins:ALLOWED_PARENT_ORIGINS}); }
+  catch (error) { loadFailed = true; render(); throw error; }
+  scope = host.scope;
+  if (host.storageIdentity) {
+    try {device=createDeviceMemory(indexedDbDeviceStorage());} catch {device=null;}
+  }
+  host.setControlHandler(async(command,panel)=>{
+    if (command==='lock-all') {lock();if(device&&host.storageIdentity)await device.lock(host.storageIdentity);return true;}
+    if (command!=='open-panel'||!key)return false;
+    const target=panel==='information'?$('information-chapter'):
+      panel==='goals'?$('panel-goals'):panel==='sharing'&&!$('share').hidden?$('share'):null;
+    if (!target||target.hidden)return false;
+    target.focus?.({preventScroll:true});target.scrollIntoView({block:'start',behavior:'instant'});
+    return true;
+  });
   for (const value of host.scopes) {
     const option = node('option', value === 'personal' ? 'Personal' : 'Business');
     option.value = value; $('vault-scope').append(option);
@@ -704,7 +758,7 @@ await run(async () => {
 });
 
 // The optional question channel is independent of ciphertext storage and does not delay opening a book.
-void connectQuestionHost().then(channel => {
+void connectQuestionHost(window,{expectedOrigins:ALLOWED_PARENT_ORIGINS}).then(channel => {
   if (!channel) return;
   questionPanel = mountQuestionAnswer($('agent-question'), channel, {
     state: () => ({ document: key ? doc : null, scope }), save, run
@@ -713,7 +767,7 @@ void connectQuestionHost().then(channel => {
 }).catch(() => {});
 
 // Batch release is optional and never exposes private drafts through the storage bridge.
-void connectBatchHost().then(channel => {
+void connectBatchHost(window,{expectedOrigins:ALLOWED_PARENT_ORIGINS}).then(channel => {
   if (!channel) return;
   batchPanel = mountQuestionBatch($('agent-question-batch'), channel, {
     state: () => ({ document: key ? doc : null, scope }), save, run, filesValue
@@ -722,7 +776,7 @@ void connectBatchHost().then(channel => {
 }).catch(() => {});
 
 // Optional item copies have their own approval channel; storage stays ciphertext-only.
-void connectItemHost().then(channel => {
+void connectItemHost(window,{expectedOrigins:ALLOWED_PARENT_ORIGINS}).then(channel => {
   if (!channel) return;
   itemPanel = mountItemPicker($('item-sharing'), channel, {
     state: () => ({document: key ? doc : null, scope}), save, run, filesValue

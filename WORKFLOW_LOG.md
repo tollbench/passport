@@ -384,3 +384,26 @@ site package integration belongs to the separately authorized operations task.
 
 ## 2026-10-23 — deterministic inline question autofill
 Steven approved automatic saved-answer filling, clickable source tags and duplicate-question grouping, explicitly forbidding AI matching. Implemented directly by Codex in an isolated source checkout; no delegated worker or Factory execution is claimed. Existing encrypted client/channel and release workflow are reused. 69 Node tests and two synthetic mobile browser scenarios passed before packaging; additional release checks are recorded in the deployment receipt. No owner book was opened or modified. Source/choice matching is exact; contexts and ambiguous entities are never guessed. Production is not marked complete by this source commit.
+
+## 2026-10-24 — unified Passport client candidate
+
+Steven requested one visible Passport, a questions-only private sheet, optional
+remembered device connection, exact compatible answer reuse, and private
+autosave before explicit Send. Built the public client in an isolated worktree;
+no Factory execution, live owner book access, deployment, or publication is
+claimed. Personal and Business remain separate ciphertext vaults and per-book
+subjects. The new dedicated-origin policy is empty in source and requires an
+independently configured exact HTTPS parent origin. Both signed single and
+proposal-batch questions use the compact private sheet. Device wrappers use a
+nonextractable IndexedDB key and are bound to owner, parent origin, scope and
+vault; Lock and Forget cancel late in-flight work.
+
+Verification: 81 synthetic Node tests passed at the first security checkpoint;
+the final focused suite and isolated Chromium run cover both signed channels,
+two-book ciphertext autosave, restoration under a new signed request ID,
+explicit selected release, save-failure refusal, and a delayed load after Lock.
+The browser fixture uses generated synthetic vaults and no provider or live
+site calls. Release still requires exact host origin/capability integration and
+a mode-gated addon loader; unconditional book addons in questions mode were
+identified and communicated to the root and operations worker. Dedicated-origin
+DNS, certificate, and infrastructure activation are separate pending work.

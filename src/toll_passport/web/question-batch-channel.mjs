@@ -19,15 +19,26 @@ export function fileBytes(file) {
 }
 export function validateBatchContext(v) {
   const keys=['requestId','token','scope','subject','taskId','purpose','recipient','questions','expiresAt'];
-  if (!(exact(v,keys)||exact(v,[...keys,'matching'])) ||
+  const optional=['matching','bookSubjects'];
+  if (!v || typeof v !== 'object' || Array.isArray(v) ||
+      !Object.keys(v).every(k=>keys.includes(k)||optional.includes(k)) ||
+      !keys.every(k=>Object.hasOwn(v,k)) ||
       !uuid(v.requestId) || !text(v.token, 32768) || !['personal', 'business'].includes(v.scope) ||
       !text(v.subject, 200) || !text(v.taskId, 200) || !text(v.purpose, 500) ||
       !exact(v.recipient, ['id', 'name']) || !text(v.recipient.id, 100) || !text(v.recipient.name, 200) ||
       !Number.isSafeInteger(v.expiresAt) || v.expiresAt <= 0 || !Array.isArray(v.questions) || v.questions.length < 1 || v.questions.length > 64) return false;
+  if (Object.hasOwn(v,'bookSubjects') && (!exact(v.bookSubjects,['personal','business']) ||
+      !text(v.bookSubjects.personal,200) || !text(v.bookSubjects.business,200) ||
+      v.bookSubjects[v.scope] !== v.subject)) return false;
   const ids = new Set();
   for (const q of v.questions) {
     const qKeys = ['id', 'digest', 'title', 'format', 'label', 'options'];
-    if (!(exact(q, qKeys) || exact(q, [...qKeys, 'recipients']) || exact(q, [...qKeys, 'recipients', 'originals'])) || !text(q.id, 100) || ids.has(q.id) ||
+    const allowed=[...qKeys,'recipients','originals','bookScope'];
+    if (!q || typeof q !== 'object' || Array.isArray(q) ||
+        !Object.keys(q).every(k=>allowed.includes(k)) || !qKeys.every(k=>Object.hasOwn(q,k)) ||
+        Object.hasOwn(q,'originals') && !Object.hasOwn(q,'recipients') ||
+        Object.hasOwn(q,'bookScope') && !['personal','business'].includes(q.bookScope) ||
+        !text(q.id, 100) || ids.has(q.id) ||
         !/^[a-f0-9]{64}$/.test(q.digest) || !text(q.title, 500) || !formats.has(q.format) ||
         !(q.label === null || typeof q.label === 'string' && /^[a-z][a-z0-9_]{0,63}$/.test(q.label)) || !Array.isArray(q.options)) return false;
     if (Object.hasOwn(q, 'recipients')) {
@@ -53,6 +64,7 @@ export function validateBatchContext(v) {
   const shared = v.questions.some(q => Object.hasOwn(q, 'recipients'));
   if (shared && !v.questions.every(q => Object.hasOwn(q, 'recipients'))) return false;
   if (!shared && v.questions.length > 16) return false;
+  if (v.questions.some(q=>Object.hasOwn(q,'bookScope')) && !Object.hasOwn(v,'bookSubjects')) return false;
   return !Object.hasOwn(v,'matching') || validateMatching(v.matching,v.questions);
 }
 export function validValue(question, value) {
@@ -83,7 +95,8 @@ export function validateBatchReceipt(v) {
   return v.ok === true ? exact(v, ['protocol', 'type', 'nonce', 'capability', 'id', 'ok', 'receiptId']) && text(v.receiptId, 100) :
     v.ok === false && exact(v, ['protocol', 'type', 'nonce', 'capability', 'id', 'ok', 'error']) && ['invalid', 'unauthorized', 'conflict', 'expired', 'unavailable'].includes(v.error);
 }
-export function connectBatchHost(win = window, { timeout = 10000, releaseTimeout = 30000 } = {}) {
+export function connectBatchHost(win = window, { timeout = 10000, releaseTimeout = 30000,
+  expectedOrigins = [] } = {}) {
   return new Promise(resolve => {
     if (win.parent === win) { resolve(null); return; }
     const nonce = crypto.randomUUID(), pending = new Map(), attempted = new Map();
@@ -93,7 +106,8 @@ export function connectBatchHost(win = window, { timeout = 10000, releaseTimeout
       if (closed || event.source !== win.parent) return;
       const v = event.data;
       if (!capability) {
-        if (!validateBatchInit(v) || v.nonce !== nonce || !/^https?:\/\//.test(event.origin)) return;
+        if (!validateBatchInit(v) || v.nonce !== nonce || !/^https?:\/\//.test(event.origin) ||
+            expectedOrigins.length && !expectedOrigins.includes(event.origin)) return;
         origin = event.origin; capability = v.capability; context = v.context; clearTimeout(timer);
         if (!context) { close(); resolve(null); return; }
         resolve({context, close, release(answers, approvalId) {

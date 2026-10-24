@@ -1,0 +1,221 @@
+"""Focused local browser fixture; mocked parent sends no real vault or provider calls."""
+from pathlib import Path
+import json
+import subprocess
+from playwright.sync_api import sync_playwright
+
+ROOT = Path(__file__).resolve().parents[1] / 'src/toll_passport/web'
+CONTEXT = {
+    'requestId': '11111111-1111-4111-8111-111111111111', 'token': 'synthetic-signed',
+    'scope': 'personal', 'subject': 'subject:personal',
+    'bookSubjects': {'personal': 'subject:personal', 'business': 'subject:business'},
+    'taskId': 'synthetic-task', 'purpose': 'Synthetic questions',
+    'recipient': {'id': 'synthetic-agent', 'name': 'Synthetic Agent'},
+    'questions': [
+        {'id': 'one', 'digest': 'a'*64, 'title': 'What is your name?',
+         'format': 'short_answer', 'label': None, 'options': [], 'bookScope': 'personal'},
+        {'id': 'two', 'digest': 'b'*64, 'title': 'What does your project do?',
+         'format': 'written_response', 'label': None, 'options': [], 'bookScope': 'business'},
+    ], 'expiresAt': 4102444800000,
+}
+SINGLE = {
+    'requestId': '22222222-2222-4222-8222-222222222222', 'token': 'synthetic-single',
+    'scope': 'personal', 'subject': 'subject:personal',
+    'bookSubjects': {'personal': 'subject:personal', 'business': 'subject:business'},
+    'taskId': 'synthetic-single-task', 'question': {
+        'id': 'one', 'digest': 'a'*64, 'title': 'What is your name?',
+        'format': 'short_answer', 'bookScope': 'personal'},
+    'recipient': {'id': 'synthetic-agent', 'name': 'Synthetic Agent'},
+    'label': None, 'expiresAt': 4102444800000,
+}
+LOCK_PARENT = """<!doctype html><iframe id='passport' sandbox='allow-scripts allow-same-origin allow-downloads'
+ src='https://passport.example/hosted.html'></iframe><script>
+window.received=[];window.pendingLoad=null;window.readyNonce=null;
+const child=document.getElementById('passport');
+const to=data=>child.contentWindow.postMessage(data,'https://passport.example');
+window.addEventListener('message',event=>{
+ if(event.source!==child.contentWindow||event.origin!=='https://passport.example')return;
+ const v=event.data;received.push(v);
+ if(v.protocol==='passport-hosted-v1'&&v.type==='ready'){
+   readyNonce=v.nonce;
+   to({protocol:v.protocol,type:'init',nonce:v.nonce,capability:'a'.repeat(32),
+     scopes:['personal','business'],scope:'personal',
+     storageIdentity:{ownerBinding:'x'.repeat(32),parentOrigin:'https://app.example'}});
+ }
+ if(v.protocol==='passport-hosted-v1'&&v.type==='request'&&v.op==='load') pendingLoad=v;
+});
+window.lockPassport=()=>to({protocol:'passport-hosted-v1',type:'control',nonce:readyNonce,
+ capability:'a'.repeat(32),id:'99999999-9999-4999-8999-999999999999',command:'lock-all'});
+window.releaseLoad=envelope=>to({...pendingLoad,type:'result',ok:true,envelope,etag:'v1'});
+</script>"""
+PARENT = """<!doctype html><html><body><iframe id='passport' sandbox='allow-scripts allow-same-origin allow-downloads'
+ src='https://passport.example/hosted.html?view=questions' style='width:680px;height:600px'></iframe>
+<script>
+window.received=[];window.storage=ENVELOPES;window.questionContext=CONTEXT;window.failSave=false;let counter=1;
+const child=document.getElementById('passport');
+window.addEventListener('message',event=>{
+ if(event.source!==child.contentWindow||event.origin!=='https://passport.example')return;
+ const v=event.data;received.push(v);
+ const to=data=>child.contentWindow.postMessage(data,'https://passport.example');
+ if(v.type==='ready'&&v.protocol==='passport-hosted-v1')
+   to({protocol:v.protocol,type:'init',nonce:v.nonce,capability:'a'.repeat(32),
+     scopes:['personal','business'],scope:'personal',
+     storageIdentity:{ownerBinding:'x'.repeat(32),parentOrigin:'https://app.example'}});
+ if(v.type==='ready'&&v.protocol==='passport-question-batch-v1')
+   to({protocol:v.protocol,type:'init',nonce:v.nonce,capability:'b'.repeat(64),context:questionContext});
+ if(v.type==='request'&&v.protocol==='passport-hosted-v1'&&v.op==='load')
+   to({...v,type:'result',ok:true,envelope:storage[v.scope]?.envelope||null,
+      etag:storage[v.scope]?.etag||null});
+ if(v.type==='request'&&v.protocol==='passport-hosted-v1'&&v.op==='save'){
+   const base={protocol:v.protocol,type:'result',nonce:v.nonce,capability:v.capability,
+      id:v.id,op:v.op,scope:v.scope};
+   if(failSave||v.expectedEtag!==storage[v.scope]?.etag){to({...base,ok:false,error:'conflict'});return;}
+   storage[v.scope]={envelope:v.envelope,etag:'v'+(++counter)};
+   to({...base,ok:true,etag:storage[v.scope].etag});
+ }
+ if(v.type==='release'&&v.protocol==='passport-question-batch-v1')
+   to({protocol:v.protocol,type:'receipt',nonce:v.nonce,capability:v.capability,id:v.id,
+      ok:true,receiptId:'synthetic-receipt'});
+});
+</script></body></html>"""
+
+def main():
+    node='/private/tmp/toll-passport-venv/lib/python3.9/site-packages/playwright/driver/node'
+    create="""import {createVault,exportRecovery} from './src/toll_passport/web/vault.mjs';
+let out={};for(const scope of ['personal','business']){const v=await createVault();
+out[scope]={envelope:v.envelope,etag:'v1',recovery:await exportRecovery(v.key,v.document.vaultId)};}
+console.log(JSON.stringify(out));"""
+    fixtures=json.loads(subprocess.check_output([node,'--input-type=module','-e',create],cwd=ROOT.parents[2]))
+    public={scope:{'envelope':row['envelope'],'etag':row['etag']} for scope,row in fixtures.items()}
+    html = PARENT.replace('CONTEXT', json.dumps(CONTEXT)).replace('ENVELOPES',json.dumps(public))
+    single_html = PARENT.replace('CONTEXT', json.dumps(SINGLE)).replace('ENVELOPES',json.dumps(public))
+    single_html = single_html.replace('passport-question-batch-v1','passport-question-v1')
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True,
+            executable_path='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+            args=['--no-sandbox'])
+        page = browser.new_page(ignore_https_errors=True, viewport={'width': 760, 'height': 700})
+        errors = []
+        page.on('pageerror', lambda error: errors.append(str(error)))
+        def route(request):
+            url = request.request.url
+            if url == 'https://app.example/':
+                request.fulfill(status=200, content_type='text/html', body=html)
+            elif url == 'https://app.example/single':
+                request.fulfill(status=200, content_type='text/html', body=single_html)
+            elif url == 'https://app.example/locked':
+                request.fulfill(status=200, content_type='text/html', body=LOCK_PARENT)
+            elif url.startswith('https://passport.example/'):
+                path=url.split('https://passport.example/',1)[1].split('?',1)[0]
+                if path == 'client-policy.mjs':
+                    request.fulfill(status=200,content_type='text/javascript',
+                        body="export const ALLOWED_PARENT_ORIGINS = Object.freeze(['https://app.example']);")
+                else:
+                    file=ROOT/path
+                    request.fulfill(status=200, content_type=('text/html' if path.endswith('.html') else
+                        'text/css' if path.endswith('.css') else 'text/javascript'),body=file.read_bytes())
+            else:
+                request.abort()
+        page.route('**/*', route)
+        page.goto('https://app.example/')
+        frame = page.frame_locator('#passport')
+        frame.get_by_text('What is your name?').wait_for(timeout=10000)
+        assert frame.get_by_text('What does your project do?').count() == 1
+        assert frame.get_by_role('button',name='Connect Passport').count() >= 1
+        assert page.evaluate("received.filter(v=>v.type==='view-ready').length") == 1
+        assert page.evaluate("received.some(v=>JSON.stringify(v).includes('What is your name?'))") is False
+        assert not errors, errors
+        # Test-only enrollment inside the isolated origin, equivalent to explicit recovery+Remember in the book view.
+        frame_handle=page.frame(name=None,url='https://passport.example/hosted.html?view=questions')
+        for scope,row in fixtures.items():
+            frame_handle.evaluate("""async ({scope,envelope,recovery})=>{
+              const {unlockVault}=await import('/vault.mjs');
+              const {createDeviceMemory,indexedDbDeviceStorage}=await import('/device-memory.mjs');
+              const opened=await unlockVault(envelope,recovery);
+              await createDeviceMemory(indexedDbDeviceStorage()).remember(
+                {ownerBinding:'x'.repeat(32),parentOrigin:'https://app.example'},scope,envelope.vaultId,opened.key);
+            }""",{'scope':scope,'envelope':row['envelope'],'recovery':row['recovery']})
+        page.evaluate("document.getElementById('passport').src+='&again=1'")
+        frame=page.frame_locator('#passport')
+        answer=frame.get_by_label('Your answer').first
+        answer.wait_for(timeout=10000)
+        answer.fill('SYNTHETIC_PRIVATE_ANSWER')
+        try:
+            frame.get_by_text('Saved privately. Nothing sent.').first.wait_for(timeout=10000)
+        except Exception:
+            print('FRAME:',frame.locator('body').inner_text()[:1800])
+            print('HOST:',page.evaluate("received.map(v=>v.type+':'+(v.op||''))"))
+            print('ERRORS:',errors)
+            raise
+        frame.get_by_label('Your answer').nth(1).fill('SYNTHETIC_BUSINESS_ANSWER')
+        frame.get_by_text('Saved privately. Nothing sent.').nth(1).wait_for(timeout=10000)
+        assert page.evaluate("received.filter(v=>v.type==='request'&&v.op==='save').map(v=>v.scope)") == ['personal','business']
+        assert page.evaluate("received.some(v=>v.type==='release')") is False
+        assert page.evaluate("received.some(v=>v.type==='request'&&JSON.stringify(v).includes('SYNTHETIC_PRIVATE_ANSWER'))") is False
+        for scope,row in fixtures.items():
+            saved=page.evaluate('(scope)=>storage[scope].envelope',scope)
+            private=frame_handle.evaluate("""async ({envelope,recovery})=>{
+              const {unlockVault}=await import('/vault.mjs');
+              return (await unlockVault(envelope,recovery)).document.entries.map(e=>e.versions.at(-1).kind);
+            }""",{'envelope':saved,'recovery':row['recovery']})
+            assert 'answer' in private and 'answer_draft' in private
+        page.evaluate("questionContext.requestId='33333333-3333-4333-8333-333333333333';document.getElementById('passport').src+='&new-request=1'")
+        frame=page.frame_locator('#passport')
+        assert frame.get_by_label('Your answer').first.input_value(timeout=10000) == 'SYNTHETIC_PRIVATE_ANSWER'
+        assert frame.get_by_label('Your answer').nth(1).input_value(timeout=10000) == 'SYNTHETIC_BUSINESS_ANSWER'
+        frame.get_by_role('button',name='Review and Send').click()
+        frame.get_by_role('button',name='Send selected answers').click()
+        assert page.evaluate("received.filter(v=>v.type==='release').length") == 1
+        assert page.evaluate("received.find(v=>v.type==='release').answers.map(a=>a.value)") == [
+            'SYNTHETIC_PRIVATE_ANSWER','SYNTHETIC_BUSINESS_ANSWER']
+        page.evaluate("failSave=true;document.getElementById('passport').src+='&failure=1'")
+        frame=page.frame_locator('#passport')
+        frame.get_by_label('Your answer').first.fill('UNSAVED_NEW_ANSWER')
+        frame.get_by_text('Not saved. Your answer remains here; reconnect before sending.').wait_for(timeout=10000)
+        assert frame.get_by_role('button',name='Review and Send').is_disabled()
+        assert page.evaluate("received.filter(v=>v.type==='release').length") == 1
+        assert not errors,errors
+        single=browser.new_page(ignore_https_errors=True, viewport={'width':760,'height':700})
+        single_errors=[]
+        single.on('pageerror',lambda error:single_errors.append(str(error)))
+        single.route('**/*',route)
+        single.goto('https://app.example/single')
+        sf=single.frame_locator('#passport')
+        sf.get_by_text('What is your name?').wait_for(timeout=10000)
+        assert single.evaluate("received.filter(v=>v.type==='view-ready').length") == 1
+        single_frame=single.frame(url='https://passport.example/hosted.html?view=questions')
+        row=fixtures['personal']
+        single_frame.evaluate("""async ({envelope,recovery})=>{
+          const {unlockVault}=await import('/vault.mjs');
+          const {createDeviceMemory,indexedDbDeviceStorage}=await import('/device-memory.mjs');
+          const opened=await unlockVault(envelope,recovery);
+          await createDeviceMemory(indexedDbDeviceStorage()).remember(
+            {ownerBinding:'x'.repeat(32),parentOrigin:'https://app.example'},'personal',envelope.vaultId,opened.key);
+        }""",{'envelope':row['envelope'],'recovery':row['recovery']})
+        single.evaluate("document.getElementById('passport').src+='&again=1'")
+        sf=single.frame_locator('#passport')
+        sf.get_by_label('Your answer').fill('SYNTHETIC_SINGLE_ANSWER')
+        sf.get_by_text('Saved privately. Nothing sent.').wait_for(timeout=10000)
+        sf.get_by_role('button',name='Review and Send').click()
+        sf.get_by_role('button',name='Send selected answers').click()
+        assert single.evaluate("received.filter(v=>v.type==='release').length") == 1
+        assert single.evaluate("received.find(v=>v.type==='release').answer") == 'SYNTHETIC_SINGLE_ANSWER'
+        assert not single_errors,single_errors
+        locked=browser.new_page(ignore_https_errors=True)
+        locked_errors=[]
+        locked.on('pageerror',lambda error:locked_errors.append(str(error)))
+        locked.route('**/*',route)
+        locked.goto('https://app.example/locked')
+        locked.wait_for_function('!!window.pendingLoad',timeout=5000)
+        locked.evaluate('lockPassport()')
+        locked.wait_for_function("received.some(v=>v.type==='control-result'&&v.ok===true)")
+        locked.evaluate('(envelope)=>releaseLoad(envelope)',fixtures['personal']['envelope'])
+        locked.wait_for_timeout(100)
+        assert locked.frame_locator('#passport').locator('body').get_attribute('data-book-state') != 'open'
+        assert not locked_errors,locked_errors
+        print('PASS: batch and single questions, two books, explicit release, failed save, late load lock',flush=True)
+        locked.close();single.close();page.close()
+        browser.close()
+
+if __name__ == '__main__':
+    main()

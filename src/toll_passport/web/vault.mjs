@@ -224,6 +224,21 @@ async function open(envelope, recovery, format) {
     raw.fill(0);
   }
 }
+/** Opens the unchanged vault format with a key recovered inside this isolated origin. */
+export async function unlockVaultWithKey(envelope, key) {
+  const {nonce, ciphertext} = validateEnvelope(envelope, 'passport-vault-v1');
+  if (key?.type !== 'secret' || key?.algorithm?.name !== 'AES-GCM' ||
+      key?.algorithm?.length !== 256 || !key.usages.includes('decrypt')) fail();
+  let document;
+  try {
+    const bytes = await crypto.subtle.decrypt({name:'AES-GCM', iv:nonce,
+      additionalData:aad(envelope), tagLength:128}, key, ciphertext);
+    document = JSON.parse(decoder.decode(bytes));
+  } catch { throw new Error('Could not unlock Passport data.'); }
+  validateDocument(document);
+  if (document.vaultId !== envelope.vaultId || document.revision !== envelope.revision) fail();
+  return {key, document};
+}
 export async function createVault() {
   const document = {
     format: 'passport-document-v1',

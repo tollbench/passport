@@ -7,10 +7,16 @@ const exact = (value, keys) => value !== null && typeof value === 'object' && !A
   Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
 const capability = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 export function validateQuestionContext(value) {
-  return exact(value, ['requestId', 'token', 'scope', 'subject', 'taskId', 'question', 'recipient', 'label', 'expiresAt']) &&
+  const keys=['requestId', 'token', 'scope', 'subject', 'taskId', 'question', 'recipient', 'label', 'expiresAt'];
+  return (exact(value,keys)||exact(value,[...keys,'bookSubjects'])) &&
     uuid(value.requestId) && text(value.token, 8192) && ['personal', 'business'].includes(value.scope) &&
     text(value.subject, 200) && text(value.taskId, 200) &&
-    exact(value.question, ['id', 'digest', 'title', 'format']) && text(value.question.id, 100) &&
+    (exact(value.question, ['id', 'digest', 'title', 'format']) ||
+      exact(value.question, ['id', 'digest', 'title', 'format','bookScope']) &&
+        ['personal','business'].includes(value.question.bookScope) && Object.hasOwn(value,'bookSubjects')) &&
+    (!Object.hasOwn(value,'bookSubjects') || exact(value.bookSubjects,['personal','business']) &&
+      text(value.bookSubjects.personal,200) && text(value.bookSubjects.business,200) &&
+      value.bookSubjects[value.scope]===value.subject) && text(value.question.id, 100) &&
     /^[a-f0-9]{64}$/.test(value.question.digest) && text(value.question.title, 500) &&
     ['short_answer', 'written_response'].includes(value.question.format) &&
     exact(value.recipient, ['id', 'name']) && text(value.recipient.id, 100) && text(value.recipient.name, 200) &&
@@ -33,7 +39,8 @@ export function validateAnswerReceipt(value) {
 }
 
 /** Optional host request. No draft or saved answer leaves until release() is called by owner UI. */
-export function connectQuestionHost(win = window, { timeout = 10000, releaseTimeout = 30000 } = {}) {
+export function connectQuestionHost(win = window, { timeout = 10000, releaseTimeout = 30000,
+  expectedOrigins = [] } = {}) {
   return new Promise((resolve, reject) => {
     if (win.parent === win) { resolve(null); return; }
     const nonce = crypto.randomUUID(), pending = new Map(), attempted = new Map();
@@ -47,7 +54,8 @@ export function connectQuestionHost(win = window, { timeout = 10000, releaseTime
       if (closed || event.source !== win.parent) return;
       const value = event.data;
       if (!cap) {
-        if (!validateQuestionInit(value) || value.nonce !== nonce || !/^https?:\/\//.test(event.origin)) return;
+        if (!validateQuestionInit(value) || value.nonce !== nonce || !/^https?:\/\//.test(event.origin) ||
+            expectedOrigins.length && !expectedOrigins.includes(event.origin)) return;
         origin = event.origin; cap = value.capability; context = value.context; clearTimeout(timer);
         if (!context) { close(); resolve(null); return; }
         resolve({ context, close, release(answer, approvalId) {
