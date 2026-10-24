@@ -69,13 +69,17 @@ export function exactSuggestions(document,context,q,scope,{entityId=''}={}) {
   const result=[];
   for (const e of document.entries) {
     const v=e.versions.at(-1),f=v.fields,c=f.classification;
+    // Older library answers have `answer` only. Treat them as text, never as
+    // a choice value whose signed option set was not recorded.
+    const value=Object.hasOwn(f,'value')?f.value:
+      ['short_answer','written_response'].includes(q.format)&&typeof f.answer==='string'?f.answer:null;
     if (v.kind!=='answer'||f.subject!==subject||
         normalizedQuestion(f.question||v.title)!==normalizedQuestion(q.title)||
-        !validValue(q,f.value)||JSON.stringify(f.answerOptions||[])!==JSON.stringify(q.options)) continue;
+        !validValue(q,value)||JSON.stringify(f.answerOptions||[])!==JSON.stringify(q.options)) continue;
     if (c?.requestType) continue;
     if (f.scope==='task'&&f.taskId!==context.taskId ||
         !['task','reusable'].includes(f.scope)) continue;
-    result.push({value:structuredClone(f.value),source:{entryId:e.id,version:v.version,
+    result.push({value:structuredClone(value),source:{entryId:e.id,version:v.version,
       createdAt:v.createdAt,question:f.question||v.title}});
   }
   return result.sort((a,b)=>b.source.createdAt.localeCompare(a.source.createdAt)||

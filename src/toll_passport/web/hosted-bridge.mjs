@@ -89,6 +89,10 @@ export function connectHost(win = window, { timeout = 30000, expectedOrigins = [
             if (closed || view !== 'questions') throw Error('invalid');
             send({protocol:PROTOCOL,type:'view-ready',nonce,capability,view});
           },
+          reportConnected(connected) {
+            if (closed || typeof connected!=='boolean') throw Error('invalid');
+            send({protocol:PROTOCOL,type:'connection-state',nonce,capability,connected});
+          },
           openBook() {
             if (closed) throw Error('unavailable');
             send({protocol:PROTOCOL,type:'open-book',nonce,capability});

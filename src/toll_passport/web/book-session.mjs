@@ -2,6 +2,7 @@
 // Two independent encrypted books behind one private client session.
 import {unlockVault, sealVault, validateDocument} from './vault.mjs';
 import {validateEnvelope} from './hosted-bridge.mjs';
+import {createOwnerLockChannel} from './device-lock-channel.mjs';
 
 const scopes = ['personal','business'];
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -10,8 +11,14 @@ export function createBookSession(host, device = null, onChange = () => {}) {
   if (!host || typeof host.request !== 'function') throw Error('invalid');
   const books = new Map(scopes.map(scope => [scope, {scope,loaded:false,envelope:null,etag:null,
     key:null,document:null,uncertain:false,error:false,generation:0,queue:Promise.resolve()}]));
-  const book = scope => { if (!host.scopes.includes(scope) || !books.has(scope)) throw Error('invalid'); return books.get(scope); };
   const notify = scope => onChange(scope);
+  function dropUnlocked() {
+    for (const b of books.values()) {b.generation++;b.key=null;b.document=null;b.uncertain=false;notify(b.scope);}
+  }
+  const lockSignal=host.storageIdentity&&typeof window!=='undefined'?
+    createOwnerLockChannel(host.storageIdentity,dropUnlocked):null;
+  if(lockSignal&&typeof window!=='undefined')window.addEventListener('pagehide',()=>lockSignal.close(),{once:true});
+  const book = scope => { if (!host.scopes.includes(scope) || !books.has(scope)) throw Error('invalid'); return books.get(scope); };
   const state = scope => { const b=book(scope); return {scope,document:b.key?b.document:null,
     vaultId:b.envelope?.vaultId||null,loaded:b.loaded,uncertain:b.uncertain,error:b.error}; };
   async function load(scope, {autoUnlock=true} = {}) {
@@ -49,7 +56,9 @@ export function createBookSession(host, device = null, onChange = () => {}) {
   }
   async function forgetDevice() {
     if (!device || !host.storageIdentity) throw Error('unavailable');
-    await device.forget(host.storageIdentity);
+    dropUnlocked();
+    try {await device.forget(host.storageIdentity);}
+    finally {lockSignal?.broadcast();}
   }
   async function saveDocument(scope,next,expected) {
     const b=book(scope);
@@ -93,8 +102,9 @@ export function createBookSession(host, device = null, onChange = () => {}) {
     const pending=b.queue.then(operation);b.queue=pending.catch(()=>{});return pending;
   }
   async function lockAll() {
-    for (const b of books.values()) {b.generation++;b.key=null;b.document=null;b.uncertain=false;notify(b.scope);}
-    if (device && host.storageIdentity) await device.lock(host.storageIdentity);
+    dropUnlocked();
+    try {if (device && host.storageIdentity) await device.lock(host.storageIdentity);}
+    finally {lockSignal?.broadcast();}
   }
   async function unlockDevice() {
     if (!device || !host.storageIdentity) throw Error('unavailable');

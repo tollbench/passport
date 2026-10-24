@@ -45,7 +45,7 @@ else {
       context.questions.some(q=>!host.scopes.includes(questionScope(context,q))))
     throw Error('Question book scope is unavailable.');
   const session=createBookSession(host,device,refresh);
-  let prepared=null,sent=false,busy=false;
+  let prepared=null,sent=false,busy=false,activeDialog=null,lastConnected=null;
   message.textContent='Answers save privately. Only what you choose to Send leaves Passport.';
   const books=el('section',undefined,'question-connect'),questions=el('section');
   const bookStatus=el('span','Passport · Connecting'),connectBook=el('button','Connect Passport','secondary'),
@@ -74,16 +74,34 @@ else {
       try {unlockBook.hidden=!await device.isLocked(host.storageIdentity);} catch { /* Recovery remains available. */ }
     }
   }
+  function scrubRow(row) {
+    clearTimeout(row.timer);row.timer=null;row.generation++;row.dirty=false;row.saving=false;
+    row.edited=false;row.hydrated=false;row.source=null;row.entityId='';row.topicRemoved=false;
+    row.files=[];row.shareFiles=[];row.file.value='';row.fileList.replaceChildren();
+    row.suggestions.replaceChildren();setValue(row,row.q.format==='multiple_choice'?[]:'');
+    row.keep.checked=true;row.selected=true;row.reuse.checked=false;row.reusable=false;
+    row.reuseLabel.hidden=true;row.status.textContent='';row.wasConnected=false;
+    row.tagSummary.textContent=row.scope==='business'?'Business':'Personal';
+    row.entity.replaceChildren();row.entityWrap.hidden=true;
+    if(row.topicToggle)row.topicToggle.textContent='Remove topic';
+    prepared=null;sent=false;
+    if(activeDialog){activeDialog.dispatchEvent(new Event('cancel',{cancelable:true}));
+      if(activeDialog.open)activeDialog.close();activeDialog.remove();activeDialog=null;}
+  }
   function refresh() {
     void renderBooks();
+    const connectedAll=wantedScopes().every(scope=>!!state(scope).document);
+    if(connectedAll!==lastConnected){lastConnected=connectedAll;host.reportConnected(connectedAll);}
     for (const row of rows) {
       const connected=!!state(row.scope).document;
+      if(!connected&&row.wasConnected)scrubRow(row);
+      if(connected)row.wasConnected=true;
       row.section.classList.toggle('question-locked',!connected);
       row.form.inert=!connected;
       row.connect.hidden=connected;
       if (connected&&!row.hydrated) hydrate(row);
     }
-    review.disabled=busy||sent||rows.some(r=>r.dirty||r.saving);
+    review.disabled=busy||sent||!connectedAll||rows.some(r=>r.dirty||r.saving);
   }
   function selectedValue(row) {
     if (['short_answer','written_response'].includes(row.q.format)) return row.input.value;
@@ -145,13 +163,14 @@ else {
     for (const hit of hits.slice(0,8)) {
       const item=el('div',undefined,'question-suggestion'),value=el('p',
         Array.isArray(hit.value)?hit.value.join(', '):hit.value),button=el('button','Use answer','secondary');
+      const source=el('small',`Saved answer · ${hit.source.question||row.q.title}`,'question-source');
       button.type='button';button.addEventListener('click',()=>{
         setValue(row,hit.value);row.source=hit.source;row.edited=true;
         updateReuse(row);
         const duplicates=propagateExact(context,rows,row);
         queueSave(row);rowStatus(row,'Answer chosen from Passport. Review before sending.');
         for(const other of duplicates){setValue(other,other.value);updateReuse(other);queueSave(other);}
-      });item.append(value,button);row.suggestions.append(item);
+      });item.append(source,value,button);row.suggestions.append(item);
     }
   }
   function queueSave(row) {
@@ -208,7 +227,7 @@ else {
       suggestions=el('div',undefined,'question-suggestions');status.setAttribute('role','status');
     const row={q,scope,section,form,connect,status,suggestions,value:q.format==='multiple_choice'?[]:'',
       selected:true,reusable:false,source:null,entityId:'',topicRemoved:false,edited:false,hydrated:false,dirty:false,
-      saving:false,generation:0,timer:null};
+      saving:false,generation:0,timer:null,wasConnected:false};
     section.append(el('h2',q.title));
     section.append(el('p',`Asked by ${(q.recipients||[context.recipient]).map(r=>r.name).join(', ')}`,'muted'));
     const tags=el('details',undefined,'question-tags'),tagSummary=el('summary',scope==='business'?'Business':'Personal');
@@ -270,7 +289,7 @@ else {
     reuse.addEventListener('change',()=>{row.reusable=reuse.checked;queueSave(row);});
     const fileLabel=el('label','Add files privately'),file=el('input');file.type='file';file.multiple=true;
     const fileList=el('div');fileLabel.append(file);form.append(fileLabel,fileList);
-    fileLabel.hidden=singleMode;row.files=[];row.shareFiles=[];
+    fileLabel.hidden=singleMode;row.files=[];row.shareFiles=[];row.file=file;row.fileList=fileList;
     const renderFiles=()=>{
       fileList.replaceChildren();
       row.files.forEach((item,index)=>{
@@ -372,12 +391,12 @@ else {
       const send=el('button','Send selected answers'),cancel=el('button','Keep private','secondary');
       send.type='button';cancel.type='button';dialog.append(heading,
         el('p','Only these answers and files leave Passport. Your other information stays private.'),list,send,cancel);
-      main.append(dialog);dialog.showModal();cancel.focus();
+      main.append(dialog);activeDialog=dialog;dialog.showModal();cancel.focus();
       const approved=await new Promise(resolve=>{
         send.addEventListener('click',()=>resolve(true),{once:true});
         cancel.addEventListener('click',()=>resolve(false),{once:true});
         dialog.addEventListener('cancel',e=>{e.preventDefault();resolve(false);},{once:true});
-      });dialog.close();dialog.remove();
+      });if(dialog.open)dialog.close();dialog.remove();if(activeDialog===dialog)activeDialog=null;
       if (!approved)return;
       if (!result.bookStates.every(({scope,vaultId,revision})=>{
         const s=state(scope);return !s.uncertain&&s.document?.vaultId===vaultId&&s.document.revision===revision;

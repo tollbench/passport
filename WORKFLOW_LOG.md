@@ -407,3 +407,16 @@ site calls. Release still requires exact host origin/capability integration and
 a mode-gated addon loader; unconditional book addons in questions mode were
 identified and communicated to the root and operations worker. Dedicated-origin
 DNS, certificate, and infrastructure activation are separate pending work.
+
+Follow-up review found two concrete gaps before release. Older answers saved
+through the normal library contain `fields.answer` rather than `fields.value`;
+the exact text suggestion reader now accepts that legacy shape while retaining
+subject, scope, task, wording and option checks. The combined synthetic browser
+fixture confirmed a normal-library answer appears with source and Use answer.
+Lock previously cleared the key but left text visible in a second active frame.
+The client now sends a same-owner lock-only BroadcastChannel signal, scrubs the
+question DOM and files, disables Review, and reports disconnected state to the
+host. Final synthetic gates: 83 Node tests pass; isolated Chromium confirms
+batch/single release, immediate encrypted autosave, cross-request restore,
+save-failure refusal, delayed load after Lock, and cross-frame active Lock.
+The host must still gate native takeover on both view-ready and connected true.

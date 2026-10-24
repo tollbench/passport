@@ -14,6 +14,7 @@ import { findAnswerCandidates } from './answers.mjs';
 import { connectHost } from './hosted-bridge.mjs';
 import { ALLOWED_PARENT_ORIGINS } from './client-policy.mjs';
 import { createDeviceMemory, indexedDbDeviceStorage } from './device-memory.mjs';
+import { createOwnerLockChannel } from './device-lock-channel.mjs';
 if (location.origin !== 'null' && !ALLOWED_PARENT_ORIGINS.length)
   throw Error('Dedicated Passport origin is not configured.');
 import { connectQuestionHost } from './question-channel.mjs';
@@ -26,7 +27,7 @@ let questionPanel, batchPanel, itemPanel;
 const panels = new Map();
 let pendingPanel = /^#panel-[a-z][a-z0-9-]{0,63}$/.test(location.hash) ? location.hash.slice(1) : null;
 const $ = id => document.getElementById(id);
-let key, doc, envelope, host, device, scope, etag = null, pendingCreation, loaded = false, sharing, receivedEnvelope, receivedRecovery, busy = false,
+let key, doc, envelope, host, device, lockSignal, scope, etag = null, pendingCreation, loaded = false, sharing, receivedEnvelope, receivedRecovery, busy = false,
   recoverySaved = false, loadFailed = false, pendingRestore = null, libraryKind = 'all',
   shareGeneration = 0, vaultGeneration = 0,
   filledAnswer = null, renderedAnswerSignature = null;
@@ -385,6 +386,11 @@ function lock() {
   render();
   status('Locked. Choose the recovery file to unlock again.');
 }
+async function lockEverywhere() {
+  lock();
+  try {if(device&&host?.storageIdentity)await device.lock(host.storageIdentity);}
+  finally {lockSignal?.broadcast();}
+}
 function clearRestore() {
   pendingRestore = null;
   $('restore-pending').hidden = true;
@@ -467,8 +473,7 @@ $('backup').addEventListener('click', () => run(() => download(envelope,
 $('lock').addEventListener('click', () => run(async () => {
   if (!recoverySaved && !await ask(
       'Without a recovery file you cannot unlock this vault. Lock anyway?')) return;
-  lock();
-  if (device && host?.storageIdentity) await device.lock(host.storageIdentity);
+  await lockEverywhere();
 }));
 $('remember-device').addEventListener('click',()=>run(async()=>{
   if (!key || !doc || !device || !host?.storageIdentity) throw Error('unavailable');
@@ -477,8 +482,10 @@ $('remember-device').addEventListener('click',()=>run(async()=>{
 }));
 $('forget-device').addEventListener('click',()=>run(async()=>{
   if (!device || !host?.storageIdentity) throw Error('unavailable');
-  await device.forget(host.storageIdentity);
-  status('This browser will need recovery files next time. Your open book remains available until you lock.');
+  lock();
+  try {await device.forget(host.storageIdentity);}
+  finally {lockSignal?.broadcast();}
+  status('Device memory removed and Passport locked. Use your recovery file to reopen.');
 }));
 $('unlock-device').addEventListener('click',()=>run(async()=>{
   if (!device || !host?.storageIdentity) throw Error('unavailable');
@@ -688,7 +695,7 @@ $('delete-vault').addEventListener('click', () => run(async () => {
       )) return;
   await persist(null);
   envelope = null;
-  lock();
+  await lockEverywhere();
   status('Hosted vault removed. Existing backups, downloads and shared copies remain.');
 }));
 async function reloadVault() {
@@ -739,9 +746,11 @@ await run(async () => {
   scope = host.scope;
   if (host.storageIdentity) {
     try {device=createDeviceMemory(indexedDbDeviceStorage());} catch {device=null;}
+    lockSignal=createOwnerLockChannel(host.storageIdentity,()=>lock());
+    window.addEventListener('pagehide',()=>lockSignal.close(),{once:true});
   }
   host.setControlHandler(async(command,panel)=>{
-    if (command==='lock-all') {lock();if(device&&host.storageIdentity)await device.lock(host.storageIdentity);return true;}
+    if (command==='lock-all') {await lockEverywhere();return true;}
     if (command!=='open-panel'||!key)return false;
     const target=panel==='information'?$('information-chapter'):
       panel==='goals'?$('panel-goals'):panel==='sharing'&&!$('share').hidden?$('share'):null;

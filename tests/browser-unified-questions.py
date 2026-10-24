@@ -2,7 +2,7 @@
 from pathlib import Path
 import json
 import subprocess
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, expect
 
 ROOT = Path(__file__).resolve().parents[1] / 'src/toll_passport/web'
 CONTEXT = {
@@ -123,6 +123,7 @@ console.log(JSON.stringify(out));"""
         assert frame.get_by_text('What does your project do?').count() == 1
         assert frame.get_by_role('button',name='Connect Passport').count() >= 1
         assert page.evaluate("received.filter(v=>v.type==='view-ready').length") == 1
+        assert page.evaluate("received.some(v=>v.type==='connection-state'&&v.connected===false)")
         assert page.evaluate("received.some(v=>JSON.stringify(v).includes('What is your name?'))") is False
         assert not errors, errors
         # Test-only enrollment inside the isolated origin, equivalent to explicit recovery+Remember in the book view.
@@ -139,6 +140,7 @@ console.log(JSON.stringify(out));"""
         frame=page.frame_locator('#passport')
         answer=frame.get_by_label('Your answer').first
         answer.wait_for(timeout=10000)
+        page.wait_for_function("received.some(v=>v.type==='connection-state'&&v.connected===true)")
         answer.fill('SYNTHETIC_PRIVATE_ANSWER')
         try:
             frame.get_by_text('Saved privately. Nothing sent.').first.wait_for(timeout=10000)
@@ -161,8 +163,8 @@ console.log(JSON.stringify(out));"""
             assert 'answer' in private and 'answer_draft' in private
         page.evaluate("questionContext.requestId='33333333-3333-4333-8333-333333333333';document.getElementById('passport').src+='&new-request=1'")
         frame=page.frame_locator('#passport')
-        assert frame.get_by_label('Your answer').first.input_value(timeout=10000) == 'SYNTHETIC_PRIVATE_ANSWER'
-        assert frame.get_by_label('Your answer').nth(1).input_value(timeout=10000) == 'SYNTHETIC_BUSINESS_ANSWER'
+        expect(frame.get_by_label('Your answer').first).to_have_value('SYNTHETIC_PRIVATE_ANSWER',timeout=10000)
+        expect(frame.get_by_label('Your answer').nth(1)).to_have_value('SYNTHETIC_BUSINESS_ANSWER',timeout=10000)
         frame.get_by_role('button',name='Review and Send').click()
         frame.get_by_role('button',name='Send selected answers').click()
         assert page.evaluate("received.filter(v=>v.type==='release').length") == 1
@@ -175,6 +177,35 @@ console.log(JSON.stringify(out));"""
         assert frame.get_by_role('button',name='Review and Send').is_disabled()
         assert page.evaluate("received.filter(v=>v.type==='release').length") == 1
         assert not errors,errors
+        page.evaluate("""()=>{
+          window.bookFrame=document.createElement('iframe');bookFrame.id='book-frame';
+          bookFrame.sandbox='allow-scripts allow-same-origin allow-downloads';
+          bookFrame.src='https://passport.example/hosted.html';document.body.append(bookFrame);
+          window.addEventListener('message',event=>{
+            if(event.source!==bookFrame.contentWindow||event.origin!=='https://passport.example')return;
+            const v=event.data,to=data=>bookFrame.contentWindow.postMessage(data,'https://passport.example');
+            if(v.protocol==='passport-hosted-v1'&&v.type==='ready'){
+              window.bookNonce=v.nonce;
+              to({protocol:v.protocol,type:'init',nonce:v.nonce,capability:'c'.repeat(32),
+                scopes:['personal','business'],scope:'personal',
+                storageIdentity:{ownerBinding:'x'.repeat(32),parentOrigin:'https://app.example'}});
+            }
+            if(v.protocol==='passport-hosted-v1'&&v.type==='request'&&v.op==='load')
+              to({...v,type:'result',ok:true,envelope:storage[v.scope]?.envelope||null,
+                etag:storage[v.scope]?.etag||null});
+          });
+        }""")
+        book=page.frame_locator('#book-frame')
+        book.locator('#book').wait_for(state='visible',timeout=10000)
+        page.evaluate("""()=>bookFrame.contentWindow.postMessage({protocol:'passport-hosted-v1',
+          type:'control',nonce:bookNonce,capability:'c'.repeat(32),
+          id:'88888888-8888-4888-8888-888888888888',command:'lock-all'},
+          'https://passport.example')""")
+        book.locator('#book').wait_for(state='hidden',timeout=10000)
+        expect(frame.get_by_label('Your answer').first).to_have_value('',timeout=10000)
+        assert 'UNSAVED_NEW_ANSWER' not in frame.locator('body').inner_text()
+        assert frame.get_by_role('button',name='Review and Send').is_disabled()
+        assert page.evaluate("received.filter(v=>v.type==='connection-state').at(-1).connected") is False
         single=browser.new_page(ignore_https_errors=True, viewport={'width':760,'height':700})
         single_errors=[]
         single.on('pageerror',lambda error:single_errors.append(str(error)))

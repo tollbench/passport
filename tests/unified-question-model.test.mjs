@@ -36,6 +36,19 @@ test('private draft and source suggestion require exact scope, subject, digest a
   assert.equal(exactSuggestions(document,context,question,'personal').length,0);
   assert.equal(exactSuggestions(document,context,{...question,title:'Different question'},'business').length,0);
 });
+test('legacy library text answers remain exact suggestions without treating unrecorded choices as safe',async()=>{
+  const question=q('one'),base=(await createVault()).document;
+  const document=addEntry(base,{kind:'answer',title:question.title,fields:{question:question.title,
+    answer:'Older private answer',subject:'business-subject',scope:'reusable'}});
+  const hits=exactSuggestions(document,context,question,'business');
+  assert.equal(hits.length,1);
+  assert.equal(hits[0].value,'Older private answer');
+  assert.equal(hits[0].source.question,question.title);
+  assert.equal(exactSuggestions(document,context,question,'personal').length,0);
+  assert.equal(exactSuggestions(document,context,{...question,title:'Different question'},'business').length,0);
+  assert.equal(exactSuggestions(document,context,{...question,format:'single_choice',
+    options:[{value:'Older private answer',label:'Older private answer'}]},'business').length,0);
+});
 test('canonical topic reuses different wording and digest only for same entity, subject and options',async()=>{
   const ctx={...context,matching:{allowedRequestTypes:['person.food_preference','pet.diet'],
     requests:[{questionId:'one',requestType:'person.food_preference',contextKey:'diet'},
@@ -63,4 +76,8 @@ test('canonical topic reuses different wording and digest only for same entity, 
   assert.deepEqual(propagateExact(ctx,unknown,unknown[0]),[]);
   const different=[{...rows[0]},{...rows[1],entityId:crypto.randomUUID()}];
   assert.deepEqual(propagateExact(ctx,different,different[0]),[]);
+  const cleared=addEntry(doc,{id:doc.entries.at(-1).id,kind:'answer',title:one.title,
+    fields:{question:one.title,subject:'business-subject',value:'',answerOptions:one.options,
+      scope:'task',taskId:'task'}});
+  assert.equal(exactSuggestions(cleared,ctx,two,'business',{entityId}).length,0);
 });
