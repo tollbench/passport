@@ -125,6 +125,10 @@ else {
     if (saved&&validValue(row.q,saved.fields.value)) {
       setValue(row,saved.fields.value);row.selected=saved.fields.selected!==false;
       row.keep.checked=row.selected;row.reusable=!!saved.fields.reusable;row.reuse.checked=row.reusable;
+      const linked=document.entries.find(e=>e.id===saved.fields.answerEntryId)?.versions.at(-1);
+      row.source=linked?.kind==='answer'&&
+        JSON.stringify(linked.fields.value)===JSON.stringify(saved.fields.value)?
+        linked.fields.reusedFrom||null:null;
       row.entityId=saved.fields.entityId||'';
       row.topicRemoved=!!saved.fields.topicRemoved;
       const choice=saved.fields.topicChoice;

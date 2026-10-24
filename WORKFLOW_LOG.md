@@ -452,8 +452,16 @@ waiting for the restored answer before its failed-save test; no runtime change
 was needed for that race. Read-only public version checks found no official
 `v0.1.0a16` tag and PyPI returned HTTP 404 for 0.1.0a16 before finalizing the
 candidate. Final local artifact SHA256: wheel
-`1126e87b67449ae7ce5a7bb630bda0c5566ed5f46eca6dbf1cb2a71190c2e38d`,
-sdist `89ffe4758f06d12e351b0729f31e2f6b99c662d7e8078c5994939c559c23c3ba`.
+`47f3bd2b6a0815990642c7d02aa7d18627ed9ba672f884d6e279f0cb6daa80ab`,
+sdist `006286019a28ed293018e5c8bf03a6f5146624029e2873d9150a2609186bf788`.
 The wheel was byte-compared with all 26 source web assets, including 22 modules
 and both Company description catalog forms; its parent-origin policy stays
 empty. No publication or deployment occurred.
+
+A final provenance review found that reopening a saved draft restored the value
+but not its linked answer source. The questions client now restores that source
+only when the linked current answer still has the same saved value. The focused
+synthetic browser flow reopened an answer chosen from a named company source,
+toggled Send off and on, saved a new version, and verified the final review
+still named the original saved question. This produced the final artifact hashes
+above; no new disclosure route, live book access or publication occurred.

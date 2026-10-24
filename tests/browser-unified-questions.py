@@ -238,6 +238,13 @@ console.log(JSON.stringify(out));"""
         first.get_by_role('button',name='Use answer').click()
         expect(first.get_by_label('Your answer')).to_have_value('Makes plans for teams')
         first.get_by_text('Saved privately. Nothing sent.').wait_for(timeout=10000)
+        topic_page.evaluate("document.getElementById('passport').src+='&source-reopen=1'")
+        topic_frame=topic_page.frame_locator('#passport')
+        first=topic_frame.locator('.batch-question').first
+        expect(first.get_by_label('Your answer')).to_have_value('Makes plans for teams',timeout=10000)
+        first.get_by_label('Send this answer').uncheck()
+        first.get_by_label('Send this answer').check()
+        first.get_by_text('Saved privately. Nothing sent.').wait_for(timeout=10000)
         topic_frame.get_by_role('button',name='Review and Send').click()
         topic_review=topic_frame.get_by_role('dialog')
         expect(topic_review).to_contain_text('Business Passport · About: Synthetic Co')
