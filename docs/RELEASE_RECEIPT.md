@@ -1,5 +1,20 @@
 # Verified Passport releases
 
+## 2026-10-24 — Explicit Save and unified questions, 0.1.0a16
+
+Tagged source: [`4507eea6ee38644592603758ca89afc601820469`](https://github.com/tollbench/passport/commit/4507eea6ee38644592603758ca89afc601820469), `v0.1.0a16`. The annotated tag peels to that exact commit.
+
+- [Exact-source CI](https://github.com/tollbench/passport/actions/runs/40126475960) passed after the opaque-frame guard correction. The earlier CI run failed before tagging or publication.
+- [Trusted publication](https://github.com/tollbench/passport/actions/runs/40126689853) passed both build and PyPI publish jobs on the tag.
+- [GitHub prerelease](https://github.com/tollbench/passport/releases/tag/v0.1.0a16) and [PyPI 0.1.0a16](https://pypi.org/project/toll-passport/0.1.0a16/) are available.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `toll_passport-0.1.0a16-py3-none-any.whl` | `e13c22cedadfccc56556b634f663f1dd82a9be308b33fc986c1f965e44469994` |
+| `toll_passport-0.1.0a16.tar.gz` | `61a644879d5c9b9de9da144488368adbf08e365515bd6173a6faebfb1254b5bd` |
+
+The reviewed local files, downloaded CI distributions, GitHub release asset digests, PyPI metadata and independently downloaded PyPI files all have these exact hashes. A fresh isolated install of the public wheel reported version `0.1.0a16`; all 26 packaged web assets matched the tagged source bytes. The default parent-origin policy remains empty. The combined actual-CSP host fixture passed against the final a16 bundle before tagging. No site integration, staging or production activation, owner-data access or paid provider call occurred in this release task.
+
 ## 2026-10-22 — Clear recovery-file access, 0.1.0a14
 
 Source/tag: [`e30324baf01ce529ec719c8592ef6c93839cece8`](https://github.com/tollbench/passport/commit/e30324baf01ce529ec719c8592ef6c93839cece8), `v0.1.0a14`.

@@ -503,3 +503,14 @@ The test's exact module-request allowlist was updated for the new a16 assets.
 The earlier explicit-Save wheel/sdist hashes remain an unpublished reviewed
 candidate, superseded by this required release-gate repair. No tag or PyPI
 publish occurred before the fix.
+
+Publication receipt: reviewed guard correction `4507eea` passed exact-source
+CI 40126475960 and the combined actual-CSP host fixture before tagging.
+Annotated `v0.1.0a16` peels to `4507eea`; its GitHub prerelease contains the
+reviewed wheel, sdist and SHA256SUMS. Tag-bound Trusted Publishing run
+40126689853 passed. Downloaded CI distributions and PyPI files matched the
+reviewed wheel SHA256 `e13c22cedadfccc56556b634f663f1dd82a9be308b33fc986c1f965e44469994`
+and sdist SHA256 `61a644879d5c9b9de9da144488368adbf08e365515bd6173a6faebfb1254b5bd`.
+A fresh isolated installation of the public wheel matched all 26 committed
+web assets. Staging/site activation is separately owned; no live book, server,
+credential or provider was touched here.
