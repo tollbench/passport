@@ -13,7 +13,7 @@ import {questionScope,questionSubject,propagateExact,savedDraft,exactSuggestions
 document.body.classList.add('hosted-questions');
 const main=document.querySelector('main');main.replaceChildren();
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
-const message=el('p','Connecting to Passport…','question-intro');
+const message=el('p','Loading questions…','question-intro');
 main.append(message);
 if (!ALLOWED_PARENT_ORIGINS.length) throw Error('Dedicated Passport origin is not configured.');
 const hostPromise=connectHost(window,{expectedOrigins:ALLOWED_PARENT_ORIGINS});
@@ -45,10 +45,10 @@ else {
       context.questions.some(q=>!host.scopes.includes(questionScope(context,q))))
     throw Error('Question book scope is unavailable.');
   const session=createBookSession(host,device,refresh);
-  let prepared=null,sent=false,busy=false,activeDialog=null,lastConnected=null;
-  message.textContent='Answers stay in this form until you choose Save to Passport. Review and Send is separate.';
+  let prepared=null,sent=false,busy=false,lastConnected=null;
+  message.remove();
   const books=el('section',undefined,'question-connect'),questions=el('section');
-  const bookStatus=el('span','Passport · Connecting'),connectBook=el('button','Connect Passport','secondary'),
+  const bookStatus=el('span','Passport'),connectBook=el('button','Connect Passport','secondary'),
     unlockBook=el('button','Unlock this device','secondary');
   connectBook.type='button';unlockBook.type='button';
   connectBook.addEventListener('click',()=>host.openBook());
@@ -58,7 +58,10 @@ else {
   });
   books.append(bookStatus,connectBook,unlockBook);
   const feedback=el('p','', 'question-feedback');feedback.setAttribute('role','status');feedback.setAttribute('aria-live','polite');
-  const save=el('button','Save to Passport','secondary'),review=el('button','Review and Send');
+  const recipients=new Map(context.questions.flatMap(q=>(q.recipients||[context.recipient]).map(r=>[r.id,r.name])));
+  const save=el('button','Save to Passport','secondary'),review=el('button',
+    recipients.size===1?`Send to ${[...recipients.values()][0]}`:`Send to all ${recipients.size} agents`);
+  review.dataset.questionSend='';
   save.type='button';review.type='button';
   const end=el('div',undefined,'question-actions');end.append(save,review);
   main.append(books,questions,feedback,end);
@@ -68,7 +71,8 @@ else {
   async function renderBooks() {
     const needed=wantedScopes(),missing=needed.filter(scope=>!state(scope).document);
     const names=missing.map(scope=>scope==='business'?'Business':'Personal').join(' and ');
-    bookStatus.textContent=missing.length?`Passport · Connect ${names}`:'Passport · Connected';
+    bookStatus.textContent=missing.length?(missing.length===needed.length?'Passport · Not connected':`Passport · ${needed.filter(scope=>!missing.includes(scope)).map(scope=>scope==='business'?'Business':'Personal').join(' and ')} connected`):'Passport · Connected';
+    connectBook.textContent=missing.length===needed.length?'Connect Passport':`Connect ${names}`;
     connectBook.hidden=!missing.length;
     unlockBook.hidden=true;
     if (missing.length&&device&&host.storageIdentity) {
@@ -76,20 +80,21 @@ else {
     }
   }
   function scrubRow(row) {
-    row.generation++;row.dirty=false;row.saving=false;
-    row.edited=false;row.hydrated=false;row.source=null;row.propagatedFrom=null;row.entityId='';row.topicRemoved=false;
-    row.topicChoice=row.signedTopic;
-    row.files=[];row.shareFiles=[];row.file.value='';row.fileList.replaceChildren();
-    row.suggestions.replaceChildren();setValue(row,row.q.format==='multiple_choice'?[]:'');
-    row.keep.checked=true;row.selected=true;row.reuse.checked=false;row.reusable=false;
-    row.reuseLabel.hidden=true;row.status.textContent='';row.wasConnected=false;
+    // Only vault-derived answer bytes are removed. A manual draft is still
+    // the person's current work, including edits made while disconnected.
+    const privateValue=row.vaultScopes.some(scope=>!state(scope).document);
+    row.generation++;row.saving=false;row.hydrated=false;
+    row.source=null;row.entityId='';row.propagatedFrom=null;
+    row.suggestions.replaceChildren();row.entity.replaceChildren();row.entityWrap.hidden=true;
+    if(row.addWhoName)row.addWhoName.value='';
+    row.reuse.checked=false;row.reusable=false;row.reuseLabel.hidden=true;
     row.tagSummary.textContent=row.scope==='business'?'Business':'Personal';
-    row.entity.replaceChildren();row.entityWrap.hidden=true;
-    if(row.topicToggle)row.topicToggle.textContent='Remove topic';
-    if(row.topicSelect)row.topicSelect.value=row.topicChoice||'';
-    prepared=null;sent=false;
-    if(activeDialog){activeDialog.dispatchEvent(new Event('cancel',{cancelable:true}));
-      if(activeDialog.open)activeDialog.close();activeDialog.remove();activeDialog=null;}
+    if(privateValue){
+      setValue(row,row.q.format==='multiple_choice'?[]:'');
+      row.vaultScopes=[];row.edited=false;row.dirty=false;
+      rowStatus(row,'Passport locked. Saved answer removed from this form.');
+    }
+    row.wasConnected=false;prepared=null;sent=false;
   }
   function refresh() {
     void renderBooks();
@@ -97,15 +102,14 @@ else {
     if(connectedAll!==lastConnected){lastConnected=connectedAll;host.reportConnected(connectedAll);}
     for (const row of rows) {
       const connected=!!state(row.scope).document;
-      if(!connected&&row.wasConnected)scrubRow(row);
+      if((!connected&&row.wasConnected)||row.vaultScopes.some(scope=>!state(scope).document))scrubRow(row);
       if(connected)row.wasConnected=true;
-      row.section.classList.toggle('question-locked',!connected);
-      row.form.inert=!connected;
-      row.connect.hidden=connected;
+      row.connect.hidden=true;
       if (connected&&!row.hydrated) hydrate(row);
+      renderDisclosure(row);
     }
-    save.disabled=busy||!connectedAll||!rows.some(canSaveRow);
-    review.disabled=busy||sent||!connectedAll||rows.some(r=>r.saving);
+    save.disabled=busy||!rows.some(canSaveRow);
+    review.disabled=busy||sent||rows.some(r=>r.saving);
   }
   function selectedValue(row) {
     if (['short_answer','written_response'].includes(row.q.format)) return row.input.value;
@@ -121,10 +125,11 @@ else {
   function rowStatus(row,text) {row.status.textContent=text;}
   function hydrate(row) {
     const document=state(row.scope).document;
-    if (!document||row.edited)return;
+    if (!document)return;
     const saved=savedDraft(document,context,row.q,row.scope);
     row.hydrated=true;
-    if (saved&&validValue(row.q,saved.fields.value)) {
+    if (!row.edited&&saved&&validValue(row.q,saved.fields.value)) {
+      row.vaultScopes=[row.scope];
       setValue(row,saved.fields.value);row.selected=saved.fields.selected!==false;
       row.keep.checked=row.selected;row.reusable=!!saved.fields.reusable;row.reuse.checked=row.reusable;
       const linked=document.entries.find(e=>e.id===saved.fields.answerEntryId)?.versions.at(-1);
@@ -186,11 +191,11 @@ else {
       const source=el('small',`Saved answer · ${hit.entity?'About '+hit.entity.name+' · ':''}${hit.source.question||row.q.title}`,'question-source');
       button.type='button';button.addEventListener('click',()=>{
         if(hit.entity){row.entityId=hit.entity.id;row.entity.value=hit.entity.id;renderEntities(row);}
-        setValue(row,hit.value);row.source=hit.source;row.edited=true;
+        setValue(row,hit.value);row.source=hit.source;row.edited=true;row.vaultScopes=[row.scope];
         updateReuse(row);
         const duplicates=propagateExact(context,rows,row);
         markUnsaved(row);
-        for(const other of duplicates){setValue(other,other.value);updateReuse(other);markUnsaved(other);}
+        for(const other of duplicates){other.vaultScopes=[...row.vaultScopes];setValue(other,other.value);updateReuse(other);markUnsaved(other);}
       });item.append(source,value,button);row.suggestions.append(item);
     }
     if(hits.length>8)row.suggestions.append(el('small','Choose who in Tags to narrow the saved answers.'));
@@ -200,7 +205,7 @@ else {
     prepared=null;sent=false;refresh();
   }
   function canSaveRow(row) {
-    return row.dirty&&(validValue(row.q,row.value)||
+    return !!state(row.scope).document&&row.dirty&&(validValue(row.q,row.value)||
       !!savedDraft(state(row.scope).document,context,row.q,row.scope));
   }
   async function persistRow(row) {
@@ -248,8 +253,6 @@ else {
   });
   async function setScope(row,next) {
     if (row.scope===next)return;
-    if (!state(next).document) {row.scopePicker.value=row.scope;
-      rowStatus(row,'Connect that Passport book before selecting it.');return;}
     row.scope=next;row.hydrated=true;row.edited=true;row.entityId='';row.source=null;row.propagatedFrom=null;
     row.topicChoice=row.signedTopic;row.topicRemoved=false;
     if(row.topicSelect)row.topicSelect.value=row.topicChoice||'';
@@ -258,15 +261,15 @@ else {
   }
   function buildRow(q) {
     const scope=questionScope(context,q),section=el('section',undefined,'batch-question'),form=el('div'),
-      connect=el('p','Connect the selected Passport book to answer privately.'),status=el('p','', 'muted'),
+      connect=el('p',''),status=el('p','', 'muted'),
       suggestions=el('div',undefined,'question-suggestions');status.setAttribute('role','status');
     const signedTopic=context.matching?.requests.find(r=>r.questionId===q.id)?.requestType||null;
     const row={q,scope,section,form,connect,status,suggestions,signedTopic,topicChoice:signedTopic,
       value:q.format==='multiple_choice'?[]:'',
       selected:true,reusable:false,source:null,entityId:'',topicRemoved:false,edited:false,hydrated:false,dirty:false,
-      saving:false,generation:0,propagatedFrom:null,wasConnected:false};
-    section.append(el('h2',q.title));
-    section.append(el('p',`Asked by ${(q.recipients||[context.recipient]).map(r=>r.name).join(', ')}`,'muted'));
+      saving:false,generation:0,propagatedFrom:null,wasConnected:false,vaultScopes:[]};
+    const heading=el('h2',q.title);heading.id=`question-${q.id}`;section.append(heading);
+    row.disclosure=el('p','', 'question-source');
     const tags=el('details',undefined,'question-tags'),tagSummary=el('summary',scope==='business'?'Business':'Personal');
     row.tagSummary=tagSummary;tags.append(tagSummary);
     const scopeLabel=el('label','Save in'),scopePicker=el('select');row.scopePicker=scopePicker;
@@ -323,7 +326,7 @@ else {
       addWho.append(name,add);tags.append(addWho);
     }
     if (['short_answer','written_response'].includes(q.format)) {
-      const label=el('label','Your answer'),input=el('textarea');input.maxLength=2000;input.rows=3;
+      const label=el('label','Your answer'),input=el('textarea');input.maxLength=2000;input.rows=3;input.setAttribute('aria-labelledby',heading.id);
       label.append(input);form.append(label);row.input=input;
       input.addEventListener('input',()=>changed(row));
     } else {
@@ -335,7 +338,7 @@ else {
         input.addEventListener('change',()=>changed(row));
       }
     }
-    form.append(suggestions);
+    form.append(suggestions,tags,row.disclosure);
     const keepLabel=el('label'),keep=el('input');keep.type='checkbox';keep.checked=true;
     keepLabel.append(keep,document.createTextNode(' Send this answer'));form.append(keepLabel);row.keep=keep;
     keep.addEventListener('change',()=>{row.selected=keep.checked;markUnsaved(row);});
@@ -343,8 +346,9 @@ else {
     reuseLabel.append(reuse,document.createTextNode(' Reuse for matching questions'));
     tags.append(reuseLabel);row.reuse=reuse;row.reuseLabel=reuseLabel;
     reuse.addEventListener('change',()=>{row.reusable=reuse.checked;markUnsaved(row);});
-    const fileLabel=el('label','Add files privately'),file=el('input');file.type='file';file.multiple=true;
-    const fileList=el('div');fileLabel.append(file);form.append(fileLabel,fileList);
+    const fileLabel=el('button','Attach files','secondary question-attach'),file=el('input');fileLabel.type='button';file.type='file';file.multiple=true;file.hidden=true;
+    fileLabel.addEventListener('click',()=>file.click());
+    const fileList=el('div');form.append(fileLabel,file,fileList);
     fileLabel.hidden=singleMode;row.files=[];row.shareFiles=[];row.file=file;row.fileList=fileList;
     const renderFiles=()=>{
       fileList.replaceChildren();
@@ -375,18 +379,33 @@ else {
         renderFiles();markUnsaved(row);rowStatus(row,'Files added to this form. Select each file before Send.');
       } catch {rowStatus(row,'File not added. Use at most 3 supported files, 2 MiB each.');}
     });
-    section.append(tags,connect,form,status);questions.append(section);
+    section.append(form,status);questions.append(section);
     return row;
   }
   function changed(row) {
-    row.value=selectedValue(row);row.edited=true;row.source=null;row.propagatedFrom=null;
+    row.value=selectedValue(row);
+    if(row.value===''||Array.isArray(row.value)&&!row.value.length)row.vaultScopes=[];
+    row.edited=true;row.source=null;row.propagatedFrom=null;
     updateReuse(row);
     const duplicates=propagateExact(context,rows,row);
     markUnsaved(row);
-    for (const other of duplicates) {setValue(other,other.value);updateReuse(other);markUnsaved(other);}
+    for (const other of duplicates) {other.vaultScopes=[...row.vaultScopes];setValue(other,other.value);updateReuse(other);markUnsaved(other);}
   }
   rows.push(...context.questions.map(buildRow));
-  host.reportViewReady('questions');
+  let localInteraction=false;
+  for(const event of ['input','change','click'])main.addEventListener(event,()=>{localInteraction=true;});
+  channel.setDraftHandler?.(answers=>{
+    if(localInteraction||busy||sent)return false;
+    for(const answer of answers){
+      const row=rows.find(row=>row.q.id===answer.id);
+      setValue(row,answer.value);row.edited=true;row.hydrated=true;row.source=null;
+      row.vaultScopes=[];row.propagatedFrom=null;row.entityId='';row.selected=true;row.keep.checked=true;
+      renderEntities(row);updateReuse(row);
+      markUnsaved(row);
+    }
+    return true;
+  });
+  if(await host.reportQuestionUI())host.reportViewReady('questions');
   await Promise.all(host.scopes.map(scope=>session.load(scope).catch(()=>{})));
   refresh();
   let lastRecheck=0;
@@ -418,43 +437,25 @@ else {
       })) throw Error('conflict');
       return prepared;
     }
-    const approvedScopes=[...new Set([context.scope,...rows.filter(r=>r.selected&&validValue(r.q,r.value)).map(r=>r.scope)])];
+    const approvedScopes=[...new Set(rows.filter(r=>r.selected&&validValue(r.q,r.value)).flatMap(r=>r.vaultScopes))];
     const bookStates=approvedScopes.map(scope=>({scope,vaultId:state(scope).document?.vaultId,
       revision:state(scope).document?.revision}));
     if (bookStates.some(s=>!s.vaultId)) throw Error('locked');
     return prepared={signature,answers,approvalId:crypto.randomUUID(),bookStates,rowStates,attempted:false};
   }
+  function renderDisclosure(row) {
+    const doc=state(row.scope).document,descriptor=topicDescriptor(row.topicChoice);
+    const who=doc&&row.entityId&&descriptor?localEntities(doc,descriptor.entityKind).find(e=>e.id===row.entityId)?.name:null;
+    const reused=row.source,source=reused&&doc?.entries.find(e=>e.id===reused.entryId)?.versions.find(v=>v.version===reused.version);
+    const origin=source?.fields.question||source?.title||(row.vaultScopes.length?'saved answer':'your answer');
+    row.disclosure.textContent=`For ${(row.q.recipients||[context.recipient]).map(r=>r.name).join(', ')} · Source: ${origin}${who?' · About '+who:''}`;
+  }
   review.addEventListener('click',async()=>{
-    if(busy||sent)return;busy=true;review.disabled=true;
+    if(busy||sent)return;busy=true;questions.inert=true;refresh();
     try {
+      // The current fields, selected files, source/subject and named recipients
+      // are the review. This explicit Send is the only plaintext release.
       const result=await prepare();
-      const dialog=el('dialog'),heading=el('h2','Review what will be sent'),list=el('div');
-      for(const answer of result.answers) {
-        const row=rows.find(row=>row.q.id===answer.id),q=row.q,doc=state(row.scope).document;
-        const descriptor=topicDescriptor(row.topicChoice);
-        const who=row.entityId&&descriptor?localEntities(doc,descriptor.entityKind).find(e=>e.id===row.entityId)?.name:null;
-        const draft=!row.dirty?savedDraft(doc,context,q,row.scope):null;
-        const current=doc.entries.find(e=>e.id===draft?.fields.answerEntryId)?.versions.at(-1);
-        const reused=row.source||current?.fields.reusedFrom;
-        const source=reused&&doc.entries.find(e=>e.id===reused.entryId)?.versions.find(v=>v.version===reused.version);
-        list.append(el('h3',q.title),el('p',Array.isArray(answer.value)?answer.value.join(', '):answer.value));
-        list.append(el('p',`${row.dirty?'Not saved to Passport':'Saved in Passport'} · ${row.scope==='business'?'Business':'Personal'} · About: ${who||'not specified'}`));
-        list.append(el('p',`Saved source: ${source?.fields.question||source?.title||
-          (reused?'unavailable':'your answer to this question')}`));
-        list.append(el('p',`For ${(q.recipients||[context.recipient]).map(r=>r.name).join(', ')}`));
-        for(const file of answer.files)list.append(el('p',`File: ${file.name}`));
-      }
-      if (!result.answers.length) list.append(el('p','No answers selected.'));
-      const send=el('button','Send selected answers'),cancel=el('button','Keep private','secondary');
-      send.type='button';cancel.type='button';dialog.append(heading,
-        el('p','Only these answers and files leave Passport. Your other information stays private.'),list,send,cancel);
-      main.append(dialog);activeDialog=dialog;dialog.showModal();cancel.focus();
-      const approved=await new Promise(resolve=>{
-        send.addEventListener('click',()=>resolve(true),{once:true});
-        cancel.addEventListener('click',()=>resolve(false),{once:true});
-        dialog.addEventListener('cancel',e=>{e.preventDefault();resolve(false);},{once:true});
-      });if(dialog.open)dialog.close();dialog.remove();if(activeDialog===dialog)activeDialog=null;
-      if (!approved)return;
       if (!result.bookStates.every(({scope,vaultId,revision})=>{
         const s=state(scope);return !s.uncertain&&s.document?.vaultId===vaultId&&s.document.revision===revision;
       })) throw Error('conflict');
@@ -464,8 +465,8 @@ else {
       const receipt=await channel.release(result.answers,result.approvalId);
       sent=true;feedback.textContent=`Sent selected answers. Receipt ${receipt.receiptId}.`;
     } catch(error) {
-      feedback.textContent=error.message==='unavailable'?'Delivery is not confirmed. Retry the same selected answers to check its receipt.':
-        'Nothing was sent. Keep your answers here and reconnect any locked Passport book.';
-    } finally {busy=false;refresh();}
+      feedback.textContent=error.message==='unavailable'?'Delivery is not confirmed. Retry Send to check its receipt.':
+        'Nothing was sent. Check your answers and try again.';
+    } finally {busy=false;questions.inert=false;refresh();}
   });
 }

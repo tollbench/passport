@@ -66,10 +66,11 @@ export function connectHost(win = window, { timeout = 30000, expectedOrigins = [
       reject(Error('invalid-origin-policy')); return;
     }
     const nonce = crypto.randomUUID(), pending = new Map();
-    let origin, capability, scopes, closed = false, controlHandler = null;
+    let origin, capability, scopes, closed = false, controlHandler = null, questionUI = null;
     const send = message => win.parent.postMessage(message, origin || '*');
     const close = () => {
       closed = true;
+      if(questionUI){clearTimeout(questionUI.timer);questionUI.resolve(false);questionUI=null;}
       win.removeEventListener('message', receive);
       clearTimeout(timer);
       for (const p of pending.values()) { clearTimeout(p.timer); p.reject(Error('unavailable')); }
@@ -88,6 +89,15 @@ export function connectHost(win = window, { timeout = 30000, expectedOrigins = [
           reportViewReady(view) {
             if (closed || view !== 'questions') throw Error('invalid');
             send({protocol:PROTOCOL,type:'view-ready',nonce,capability,view});
+          },
+          reportQuestionUI() {
+            if(closed)throw Error('unavailable');
+            if(questionUI)return questionUI.promise;
+            let finish;const promise=new Promise(resolve=>{finish=resolve;});
+            const timer=setTimeout(()=>{questionUI=null;finish(false);},2000);
+            questionUI={promise,resolve:finish,timer};
+            send({protocol:PROTOCOL,type:'question-ui',nonce,capability,version:1});
+            return promise;
           },
           reportConnected(connected) {
             if (closed || typeof connected!=='boolean') throw Error('invalid');
@@ -110,6 +120,10 @@ export function connectHost(win = window, { timeout = 30000, expectedOrigins = [
           });
         }});
         return;
+      }
+      if(event.origin===origin&&exact(v,['protocol','type','nonce','capability','version'])&&
+         v.protocol===PROTOCOL&&v.type==='question-ui-ack'&&v.nonce===nonce&&v.capability===capability&&v.version===1){
+        if(questionUI){clearTimeout(questionUI.timer);questionUI.resolve(true);questionUI=null;}return;
       }
       if (event.origin === origin && validateControl(v) && v.nonce === nonce &&
           v.capability === capability) {

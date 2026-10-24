@@ -86,3 +86,12 @@ test('timeouts reject and late/replayed replies cannot resolve another operation
   f.emit({...current,type:'result',ok:false,error:'conflict'});
   await assert.rejects(second,/conflict/);host.close();
 });
+test('ordinary question ready requires authenticated current-host capability acknowledgment',async()=>{
+  const f=fixture(),pending=connectHost(f.win,{timeout:100});f.emit({...init,nonce:f.sent[0].data.nonce});const host=await pending;
+  let ready=false;const support=host.reportQuestionUI().then(value=>{ready=value;return value;});
+  const request=f.sent.at(-1).data,ack={...request,type:'question-ui-ack'};
+  f.emit(ack,{});f.emit(ack,f.win.parent,'https://wrong.test');f.emit({...ack,capability:'b'.repeat(32)});f.emit({...ack,nonce:crypto.randomUUID()});f.emit({...ack,extra:true});
+  await new Promise(r=>setImmediate(r));assert.equal(ready,false);
+  f.emit(ack);assert.equal(await support,true);
+  const unsupported=host.reportQuestionUI();host.close();assert.equal(await unsupported,false);
+});

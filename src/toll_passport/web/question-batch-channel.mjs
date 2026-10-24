@@ -95,12 +95,25 @@ export function validateBatchReceipt(v) {
   return v.ok === true ? exact(v, ['protocol', 'type', 'nonce', 'capability', 'id', 'ok', 'receiptId']) && text(v.receiptId, 100) :
     v.ok === false && exact(v, ['protocol', 'type', 'nonce', 'capability', 'id', 'ok', 'error']) && ['invalid', 'unauthorized', 'conflict', 'expired', 'unavailable'].includes(v.error);
 }
+// Inbound-only manual draft handoff. No private answer or source is returned.
+export function validateBatchDraft(v, context) {
+  if(!exact(v,['protocol','type','nonce','capability','id','token','generation','answers'])||
+     !base(v)||v.type!=='draft'||!uuid(v.id)||v.token!==context.token||
+     !Number.isSafeInteger(v.generation)||v.generation<1||v.generation>1000000||
+     !Array.isArray(v.answers)||v.answers.length!==context.questions.length)return false;
+  const ids=new Set();
+  return v.answers.every(a=>{
+    if(!exact(a,['id','value'])||ids.has(a.id))return false;
+    ids.add(a.id);const q=context.questions.find(q=>q.id===a.id);
+    return !!q&&(a.value===''||q.format==='multiple_choice'&&Array.isArray(a.value)&&!a.value.length||validValue(q,a.value));
+  });
+}
 export function connectBatchHost(win = window, { timeout = 10000, releaseTimeout = 30000,
   expectedOrigins = [] } = {}) {
   return new Promise(resolve => {
     if (win.parent === win) { resolve(null); return; }
     const nonce = crypto.randomUUID(), pending = new Map(), attempted = new Map();
-    let origin, capability, context, closed = false;
+    let origin, capability, context, closed = false, draftHandler=null, draftGeneration=0;
     const close = () => { closed = true; clearTimeout(timer); win.removeEventListener('message', receive); for (const p of pending.values()) { clearTimeout(p.timer); p.reject(Error('unavailable')); } pending.clear(); };
     const receive = event => {
       if (closed || event.source !== win.parent) return;
@@ -110,7 +123,7 @@ export function connectBatchHost(win = window, { timeout = 10000, releaseTimeout
             expectedOrigins.length && !expectedOrigins.includes(event.origin)) return;
         origin = event.origin; capability = v.capability; context = v.context; clearTimeout(timer);
         if (!context) { close(); resolve(null); return; }
-        resolve({context, close, release(answers, approvalId) {
+        resolve({context, close, setDraftHandler(handler) { draftHandler=handler; }, release(answers, approvalId) {
           if (closed || !validateBatchAnswers(answers, context)) return Promise.reject(Error('invalid'));
           const signature = JSON.stringify(answers);
           if (Date.now() >= context.expiresAt && attempted.get(approvalId) !== signature) return Promise.reject(Error('expired'));
@@ -118,6 +131,13 @@ export function connectBatchHost(win = window, { timeout = 10000, releaseTimeout
           if (!validateBatchRelease(message)) return Promise.reject(Error('invalid'));
           return new Promise((resolve,reject) => { const timer=setTimeout(()=>{pending.delete(message.id);reject(Error('unavailable'));},releaseTimeout); pending.set(message.id,{resolve,reject,timer});attempted.set(approvalId,signature);win.parent.postMessage(message,origin); });
         }}); return;
+      }
+      if(event.origin===origin&&v?.nonce===nonce&&v.capability===capability&&
+         validateBatchDraft(v,context)&&Date.now()<context.expiresAt&&v.generation>draftGeneration){
+        draftGeneration=v.generation;
+        const ok=!!draftHandler&&draftHandler(v.answers)===true;
+        win.parent.postMessage({protocol:BATCH_PROTOCOL,type:'draft-result',nonce,capability,id:v.id,ok},origin);
+        return;
       }
       if (event.origin !== origin || !validateBatchReceipt(v) || v.nonce !== nonce || v.capability !== capability) return;
       const p=pending.get(v.id);if(!p)return;clearTimeout(p.timer);pending.delete(v.id);v.ok?p.resolve(v):p.reject(Error(v.error));
