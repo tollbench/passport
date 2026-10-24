@@ -143,7 +143,9 @@ console.log(JSON.stringify(out));"""
         frame.get_by_text('What is your name?').wait_for(timeout=10000)
         assert frame.get_by_text('What does your project do?').count() == 1
         assert frame.get_by_role('button',name='Connect Passport').count() >= 1
+        page.wait_for_function("received.filter(v=>v.type==='view-ready').length===1")
         assert page.evaluate("received.filter(v=>v.type==='view-ready').length") == 1
+        page.wait_for_function("received.some(v=>v.type==='connection-state'&&v.connected===false)")
         assert page.evaluate("received.some(v=>v.type==='connection-state'&&v.connected===false)")
         assert page.evaluate("received.some(v=>JSON.stringify(v).includes('What is your name?'))") is False
         assert not errors, errors
@@ -310,6 +312,7 @@ console.log(JSON.stringify(out));"""
         expect(frame.locator('textarea').first).to_have_value('',timeout=10000)
         assert 'UNSAVED_NEW_ANSWER' not in frame.locator('body').inner_text()
         assert not frame.locator('[data-question-send]').is_disabled()
+        page.wait_for_function("received.filter(v=>v.type==='connection-state').at(-1)?.connected===false")
         assert page.evaluate("received.filter(v=>v.type==='connection-state').at(-1).connected") is False
         single=browser.new_page(ignore_https_errors=True, viewport={'width':760,'height':700})
         single_errors=[]
@@ -318,6 +321,7 @@ console.log(JSON.stringify(out));"""
         single.goto('https://app.example/single')
         sf=single.frame_locator('#passport')
         sf.get_by_text('What is your name?').wait_for(timeout=10000)
+        single.wait_for_function("received.filter(v=>v.type==='view-ready').length===1")
         assert single.evaluate("received.filter(v=>v.type==='view-ready').length") == 1
         single_frame=single.frame(url='https://passport.example/hosted.html?view=questions')
         row=fixtures['personal']
