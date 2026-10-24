@@ -51,7 +51,8 @@ window.releaseLoad=envelope=>to({...pendingLoad,type:'result',ok:true,envelope,e
 PARENT = """<!doctype html><html><body><iframe id='passport' sandbox='allow-scripts allow-same-origin allow-downloads'
  src='https://passport.example/hosted.html?view=questions' style='width:680px;height:600px'></iframe>
 <script>
-window.received=[];window.storage=ENVELOPES;window.questionContext=CONTEXT;window.failSave=false;let counter=1;
+window.received=[];window.storage=ENVELOPES;window.questionContext=CONTEXT;
+window.failSave=false;window.holdSave=false;window.pendingSaves=[];let counter=1;
 const child=document.getElementById('passport');
 window.addEventListener('message',event=>{
  if(event.source!==child.contentWindow||event.origin!=='https://passport.example')return;
@@ -69,9 +70,12 @@ window.addEventListener('message',event=>{
  if(v.type==='request'&&v.protocol==='passport-hosted-v1'&&v.op==='save'){
    const base={protocol:v.protocol,type:'result',nonce:v.nonce,capability:v.capability,
       id:v.id,op:v.op,scope:v.scope};
-   if(failSave||v.expectedEtag!==storage[v.scope]?.etag){to({...base,ok:false,error:'conflict'});return;}
-   storage[v.scope]={envelope:v.envelope,etag:'v'+(++counter)};
-   to({...base,ok:true,etag:storage[v.scope].etag});
+   const finish=()=>{
+     if(failSave||v.expectedEtag!==storage[v.scope]?.etag){to({...base,ok:false,error:'conflict'});return;}
+     storage[v.scope]={envelope:v.envelope,etag:'v'+(++counter)};
+     to({...base,ok:true,etag:storage[v.scope].etag});
+   };
+   if(holdSave)pendingSaves.push(finish);else finish();
  }
  if(v.type==='release'&&v.protocol==='passport-question-batch-v1')
    to({protocol:v.protocol,type:'receipt',nonce:v.nonce,capability:v.capability,id:v.id,
@@ -155,15 +159,24 @@ console.log(JSON.stringify(out));"""
         answer.wait_for(timeout=10000)
         page.wait_for_function("received.some(v=>v.type==='connection-state'&&v.connected===true)")
         answer.fill('SYNTHETIC_PRIVATE_ANSWER')
-        try:
-            frame.get_by_text('Saved privately. Nothing sent.').first.wait_for(timeout=10000)
-        except Exception:
-            print('FRAME:',frame.locator('body').inner_text()[:1800])
-            print('HOST:',page.evaluate("received.map(v=>v.type+':'+(v.op||''))"))
-            print('ERRORS:',errors)
-            raise
         frame.get_by_label('Your answer').nth(1).fill('SYNTHETIC_BUSINESS_ANSWER')
-        frame.get_by_text('Saved privately. Nothing sent.').nth(1).wait_for(timeout=10000)
+        frame.get_by_text('Not saved to Passport. Only in this form.').first.wait_for(timeout=10000)
+        assert page.evaluate("received.filter(v=>v.type==='request'&&v.op==='save').length") == 0
+        frame.get_by_role('button',name='Review and Send').click()
+        draft_review=frame.get_by_role('dialog')
+        expect(draft_review).to_contain_text('Not saved to Passport · Personal')
+        draft_review.get_by_role('button',name='Keep private').click()
+        assert page.evaluate("received.filter(v=>v.type==='request'&&v.op==='save').length") == 0
+        page.evaluate("document.getElementById('passport').src+='&unsaved-reopen=1'")
+        frame=page.frame_locator('#passport')
+        frame.get_by_text('Passport · Connected').wait_for(timeout=10000)
+        expect(frame.get_by_label('Your answer').first).to_have_value('',timeout=10000)
+        expect(frame.get_by_label('Your answer').nth(1)).to_have_value('',timeout=10000)
+        frame.get_by_label('Your answer').first.fill('SYNTHETIC_PRIVATE_ANSWER')
+        frame.get_by_label('Your answer').nth(1).fill('SYNTHETIC_BUSINESS_ANSWER')
+        frame.get_by_role('button',name='Save to Passport').click()
+        page.wait_for_function("received.filter(v=>v.type==='request'&&v.op==='save').length===2")
+        frame.get_by_text('Saved to Passport. Nothing sent.').first.wait_for(timeout=10000)
         assert page.evaluate("received.filter(v=>v.type==='request'&&v.op==='save').map(v=>v.scope)") == ['personal','business']
         assert page.evaluate("received.some(v=>v.type==='release')") is False
         assert page.evaluate("received.some(v=>v.type==='request'&&JSON.stringify(v).includes('SYNTHETIC_PRIVATE_ANSWER'))") is False
@@ -181,31 +194,51 @@ console.log(JSON.stringify(out));"""
         frame.get_by_role('button',name='Review and Send').click()
         review=frame.get_by_role('dialog')
         expect(review).to_contain_text('What is your name?')
-        expect(review).to_contain_text('Personal Passport · About: not specified')
+        expect(review).to_contain_text('Saved in Passport · Personal · About: not specified')
         expect(review).to_contain_text('Saved source: your answer to this question')
         expect(review).to_contain_text('SYNTHETIC_PRIVATE_ANSWER')
         expect(review).to_contain_text('What does your project do?')
-        expect(review).to_contain_text('Business Passport · About: not specified')
+        expect(review).to_contain_text('Saved in Passport · Business · About: not specified')
         expect(review).to_contain_text('SYNTHETIC_BUSINESS_ANSWER')
         expect(review).to_contain_text('For Synthetic Agent')
         frame.get_by_role('button',name='Send selected answers').click()
         assert page.evaluate("received.filter(v=>v.type==='release').length") == 1
+        assert page.evaluate("received.filter(v=>v.type==='request'&&v.op==='save').length") == 2
         assert page.evaluate("received.find(v=>v.type==='release').answers.map(a=>a.value)") == [
             'SYNTHETIC_PRIVATE_ANSWER','SYNTHETIC_BUSINESS_ANSWER']
+        frame.get_by_label('Your answer').nth(1).fill('')
+        frame.get_by_role('button',name='Save to Passport').click()
+        page.wait_for_function("received.filter(v=>v.type==='request'&&v.op==='save').length===3")
+        frame.get_by_text('Saved to Passport. Nothing sent.').first.wait_for(timeout=10000)
+        page.evaluate("document.getElementById('passport').src+='&cleared=1'")
+        frame=page.frame_locator('#passport')
+        frame.get_by_text('Passport · Connected').wait_for(timeout=10000)
+        expect(frame.get_by_label('Your answer').nth(1)).to_have_value('',timeout=10000)
         page.evaluate("failSave=true;document.getElementById('passport').src+='&failure=1'")
         frame=page.frame_locator('#passport')
         frame.get_by_text('Passport · Connected').wait_for(timeout=10000)
         expect(frame.get_by_label('Your answer').first).to_have_value('SYNTHETIC_PRIVATE_ANSWER',timeout=10000)
         frame.get_by_label('Your answer').first.fill('UNSAVED_NEW_ANSWER')
-        try:
-            frame.get_by_text('Not saved. Your answer remains here; reconnect before sending.').wait_for(timeout=10000)
-        except Exception:
-            print('SAVE FAILURE FRAME:',frame.locator('body').inner_text()[:1800])
-            print('SAVE FAILURE HOST:',page.evaluate("received.filter(v=>v.type==='request').map(v=>v.op+':'+v.scope)"))
-            print('ERRORS:',errors)
-            raise
-        assert frame.get_by_role('button',name='Review and Send').is_disabled()
+        frame.get_by_role('button',name='Save to Passport').click()
+        frame.get_by_text('Not saved to Passport. Your answer remains in this form.').wait_for(timeout=10000)
+        expect(frame.get_by_label('Your answer').first).to_have_value('UNSAVED_NEW_ANSWER')
+        assert not frame.get_by_role('button',name='Review and Send').is_disabled()
         assert page.evaluate("received.filter(v=>v.type==='release').length") == 1
+        page.evaluate('failSave=false;holdSave=true')
+        page.evaluate("document.getElementById('passport').src+='&race-fresh=1'")
+        frame=page.frame_locator('#passport')
+        frame.get_by_text('Passport · Connected').wait_for(timeout=10000)
+        frame.get_by_label('Your answer').first.fill('SNAPSHOT_A')
+        frame.get_by_label('Your answer').nth(1).fill('SNAPSHOT_B')
+        frame.get_by_role('button',name='Save to Passport').click()
+        page.wait_for_function('pendingSaves.length===1')
+        frame.get_by_label('Your answer').nth(1).fill('SNAPSHOT_B_LATE')
+        page.evaluate('holdSave=false;pendingSaves.shift()()')
+        frame.get_by_text('Some answers were not saved. They remain in this form.').wait_for(timeout=10000)
+        page.evaluate("document.getElementById('passport').src+='&race-reopen=1'")
+        frame=page.frame_locator('#passport')
+        expect(frame.get_by_label('Your answer').first).to_have_value('SNAPSHOT_A',timeout=10000)
+        expect(frame.get_by_label('Your answer').nth(1)).to_have_value('',timeout=10000)
         assert not errors,errors
         topic_page=browser.new_page(ignore_https_errors=True)
         topic_page.route('**/*',route)
@@ -230,24 +263,28 @@ console.log(JSON.stringify(out));"""
         second.locator('.question-add-who input').fill('Synthetic Co')
         second.get_by_role('button',name='Add privately').click()
         second.get_by_label('Your answer').fill('Makes plans for teams')
-        second.get_by_text('Saved privately. Nothing sent.').wait_for(timeout=10000)
+        second.get_by_text('Not saved to Passport. Only in this form.').wait_for(timeout=10000)
+        topic_frame.get_by_role('button',name='Save to Passport').click()
+        second.get_by_text('Saved to Passport. Nothing sent.').wait_for(timeout=10000)
         topic_page.evaluate("document.getElementById('passport').src+='&again=1'")
         topic_frame=topic_page.frame_locator('#passport')
         first=topic_frame.locator('.batch-question').first
         first.get_by_text('About Synthetic Co').wait_for(timeout=10000)
         first.get_by_role('button',name='Use answer').click()
         expect(first.get_by_label('Your answer')).to_have_value('Makes plans for teams')
-        first.get_by_text('Saved privately. Nothing sent.').wait_for(timeout=10000)
+        first.get_by_text('Not saved to Passport. Only in this form.').wait_for(timeout=10000)
+        topic_frame.get_by_role('button',name='Save to Passport').click()
+        first.get_by_text('Saved to Passport. Nothing sent.').wait_for(timeout=10000)
         topic_page.evaluate("document.getElementById('passport').src+='&source-reopen=1'")
         topic_frame=topic_page.frame_locator('#passport')
         first=topic_frame.locator('.batch-question').first
         expect(first.get_by_label('Your answer')).to_have_value('Makes plans for teams',timeout=10000)
         first.get_by_label('Send this answer').uncheck()
         first.get_by_label('Send this answer').check()
-        first.get_by_text('Saved privately. Nothing sent.').wait_for(timeout=10000)
+        first.get_by_text('Not saved to Passport. Only in this form.').wait_for(timeout=10000)
         topic_frame.get_by_role('button',name='Review and Send').click()
         topic_review=topic_frame.get_by_role('dialog')
-        expect(topic_review).to_contain_text('Business Passport · About: Synthetic Co')
+        expect(topic_review).to_contain_text('Business · About: Synthetic Co')
         expect(topic_review).to_contain_text('Saved source: What does the company do?')
         topic_review.get_by_role('button',name='Keep private').click()
         assert topic_page.evaluate("received.some(v=>v.type==='release')") is False
@@ -301,10 +338,11 @@ console.log(JSON.stringify(out));"""
         single.evaluate("document.getElementById('passport').src+='&again=1'")
         sf=single.frame_locator('#passport')
         sf.get_by_label('Your answer').fill('SYNTHETIC_SINGLE_ANSWER')
-        sf.get_by_text('Saved privately. Nothing sent.').wait_for(timeout=10000)
+        sf.get_by_text('Not saved to Passport. Only in this form.').wait_for(timeout=10000)
         sf.get_by_role('button',name='Review and Send').click()
         sf.get_by_role('button',name='Send selected answers').click()
         assert single.evaluate("received.filter(v=>v.type==='release').length") == 1
+        assert single.evaluate("received.filter(v=>v.type==='request'&&v.op==='save').length") == 0
         assert single.evaluate("received.find(v=>v.type==='release').answer") == 'SYNTHETIC_SINGLE_ANSWER'
         assert not single_errors,single_errors
         locked=browser.new_page(ignore_https_errors=True)

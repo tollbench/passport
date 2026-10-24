@@ -21,6 +21,13 @@ test('exact compatible blanks propagate; edits, conflicts and other books remain
   assert.deepEqual(propagateExact(context,rows,rows[0]),[rows[1]]);
   assert.equal(rows[1].value,'new answer');assert.equal(rows[2].value,'old answer');
   assert.equal(rows[3].value,'');
+  rows[0].value='revised';
+  assert.deepEqual(propagateExact(context,rows,rows[0]),[rows[1]]);
+  assert.equal(rows[1].value,'revised');
+  rows[1].edited=true;rows[1].propagatedFrom=null;rows[1].value='my own answer';
+  rows[0].value='third version';
+  assert.deepEqual(propagateExact(context,rows,rows[0]),[]);
+  assert.equal(rows[1].value,'my own answer');
 });
 test('private draft and source suggestion require exact scope, subject, digest and options',async()=>{
   const vault=await createVault(),question=q('one');
@@ -73,9 +80,11 @@ test('canonical topic reuses different wording and digest only for same entity, 
     {q:three,scope:'business',entityId,value:'',edited:false}];
   assert.deepEqual(propagateExact(ctx,rows,rows[0]),[rows[1]]);
   const unknown=[{...rows[0],entityId:''},{...rows[1],entityId:''}];
-  assert.deepEqual(propagateExact(ctx,unknown,unknown[0]),[]);
+  assert.deepEqual(propagateExact(ctx,unknown,unknown[0]),[unknown[1]]);
+  assert.equal(unknown[1].value,'');
   const different=[{...rows[0]},{...rows[1],entityId:crypto.randomUUID()}];
-  assert.deepEqual(propagateExact(ctx,different,different[0]),[]);
+  assert.deepEqual(propagateExact(ctx,different,different[0]),[different[1]]);
+  assert.equal(different[1].value,'');
   const cleared=addEntry(doc,{id:doc.entries.at(-1).id,kind:'answer',title:one.title,
     fields:{question:one.title,subject:'business-subject',value:'',answerOptions:one.options,
       scope:'task',taskId:'task'}});

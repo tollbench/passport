@@ -29,13 +29,22 @@ export function duplicateKey(context,q,scope,entityId='',topicRemoved=false,topi
       ['question',normalizedQuestion(q.title),recipients]]);
 }
 export function propagateExact(context,rows,source) {
-  if (!validValue(source.q,source.value)) return [];
   const key=duplicateKey(context,source.q,source.scope,source.entityId,source.topicRemoved,source.topicChoice);
-  if(key===null)return [];
   const changed=[];
   for (const row of rows) {
-    if (row===source || row.edited || row.value !== '' &&
-        !(Array.isArray(row.value)&&row.value.length===0) ||
+    if (row!==source && !row.edited && row.propagatedFrom===source.q.id &&
+        (key===null || !validValue(source.q,source.value) ||
+        duplicateKey(context,row.q,row.scope,row.entityId,row.topicRemoved,row.topicChoice)!==key)) {
+      const hadValue=row.value!==''&&!(Array.isArray(row.value)&&row.value.length===0);
+      row.value=row.q.format==='multiple_choice'?[]:'';row.propagatedFrom=null;
+      if(hadValue)changed.push(row);
+      continue;
+    }
+    if (key===null || !validValue(source.q,source.value)) continue;
+    if (row===source || row.edited ||
+        (row.propagatedFrom && row.propagatedFrom!==source.q.id) ||
+        (!row.propagatedFrom && row.value !== '' &&
+        !(Array.isArray(row.value)&&row.value.length===0)) ||
         duplicateKey(context,row.q,row.scope,row.entityId,row.topicRemoved,row.topicChoice)!==key ||
         !validValue(row.q,source.value)) continue;
     row.value=structuredClone(source.value);

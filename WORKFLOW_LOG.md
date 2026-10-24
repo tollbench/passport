@@ -465,3 +465,28 @@ synthetic browser flow reopened an answer chosen from a named company source,
 toggled Send off and on, saved a new version, and verified the final review
 still named the original saved question. This produced the final artifact hashes
 above; no new disclosure route, live book access or publication occurred.
+
+Steven then corrected the unpublished a16 answer workflow: entering an answer
+must remain in memory until **Save to Passport**. The questions-only client now
+does no vault save on typing, blur, Use answer, choices, tags, scope changes,
+Review, or Send. Compatible untouched duplicate rows follow source edits in
+the current form; a manual edit breaks that link. Save explicitly persists all
+eligible changed answers and stable draft pointers, including a deliberate
+clear of a previously saved answer. A failed save keeps the visible draft;
+reopening restores only the last explicit Save. Review marks unsaved answers
+and names their recipients. Send releases only selected answers and adds no
+private answer or approval entry. Saving an entity through Add privately is a
+separate explicit action and does not save its answer.
+
+The focused synthetic Chromium fixture passed batch and single release,
+two-book explicit Save/reopen, zero implicit writes, clearing a saved answer,
+failed Save, an edit during a held Save, and Lock; the exact duplicate model
+suite passed 6/6. The a16 wheel was rebuilt in a new isolated artifact
+directory and byte-compared with all 26 web assets (22 modules); the default
+parent-origin policy remains empty. Wheel SHA256
+`ec6051e9556e263580f3e674881cab22e20ef43b08f38a8f1d905f9fdc4fd85f`;
+sdist SHA256
+`5fbf621a7afc6932d44a56b74b6201a2db733b7ff25b9639f5f17c05a6003d36`.
+Earlier autosave artifact hashes remain historical and are superseded. No
+publication, deployment, live owner data, or provider call occurred. The
+root coordinator owns host pinning and the combined browser integration gate.

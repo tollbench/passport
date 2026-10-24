@@ -1,5 +1,10 @@
 # Deterministic question autofill
 
+The a16 dedicated questions-only view keeps edits in memory until the owner
+chooses **Save to Passport**. Its separate Review and Send action can release
+selected unsaved answers without saving them to the private book. The older
+matching-enabled book flow described below retains its own save contract.
+
 A host may supply a public requestType from the versioned catalog. No tag means no topic match. The client does not infer tags from prose, files, entity names, embeddings or model calls.
 
 Inside the unlocked isolated client, one entity of the declared kind plus one compatible eligible saved fact fills an empty answer automatically. Multiple entities or competing facts require explicit choice. Manual edits and deliberate clearing prevent later automatic replacement. The source chip lists the original question, version and date, allows explicit source selection, and can clear the answer. A formerly automatic source is withdrawn when it becomes ambiguous or ineligible. An explicitly selected current source remains selected even if another fact exists.
