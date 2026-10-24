@@ -13,9 +13,10 @@ and agent remain valid when an optional hint is absent or unknown.
 `requestType,label,entityKind,topic,valueType,supportedFormats`. The public module
 exports the identical frozen registry as `TOPIC_CATALOG`; a parity test prevents
 JSON drift. Hosts should load the installed resource instead of copying a second
-registry. Version 1 contains eleven specific types, including distinct person
-food preferences, pet diet, organization/project audiences and project podcast
-preferences. Broad browsing tags are never matching keys.
+registry. Version 1 contains twelve specific types, including distinct person
+food preferences, pet diet, organization/project audiences, Company description
+(`organization.description`), Project description (`project.description`) and
+project podcast preferences. Broad browsing tags are never matching keys.
 
 The existing batch context may add exactly:
 
@@ -75,6 +76,14 @@ Human edits remain. Removing a tag leaves them unclassified. Explicitly choosing
 a valid replacement topic and entity classifies retained human text without
 replacing it. Invalid/incomplete replacements remain unclassified. No separate
 review queue, classification modal or extra approval action is added.
+
+In the a16 questions-only view, the collapsed local topic selector lists only
+request types allowed by the signed context and compatible with that question's
+format. It never changes the signed request or recipients. For a tagged question
+without a chosen entity, matching saved suggestions may list several exact
+entities by name; nothing fills automatically. **Use answer** explicitly binds
+that answer's entity, and duplicate propagation still requires the same known
+entity, book, topic, context and answer format.
 
 The existing named-recipient Send button is the disclosure gesture. Its card
 shows the action purpose, included answers, individually selected files and who

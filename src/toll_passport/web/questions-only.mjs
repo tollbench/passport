@@ -8,7 +8,7 @@ import {createBookSession} from './book-session.mjs';
 import {createDeviceMemory,indexedDbDeviceStorage} from './device-memory.mjs';
 import {addEntry} from './vault.mjs';
 import {classificationFor,localEntities,topicDescriptor} from './topic-catalog.mjs';
-import {questionScope,questionSubject,propagateExact,savedDraft,exactSuggestions} from './unified-question-model.mjs';
+import {questionScope,questionSubject,propagateExact,savedDraft,exactSuggestions,entitySuggestions} from './unified-question-model.mjs';
 
 document.body.classList.add('hosted-questions');
 const main=document.querySelector('main');main.replaceChildren();
@@ -46,7 +46,7 @@ else {
     throw Error('Question book scope is unavailable.');
   const session=createBookSession(host,device,refresh);
   let prepared=null,sent=false,busy=false,activeDialog=null,lastConnected=null;
-  message.textContent='Answers save privately. Only what you choose to Send leaves Passport.';
+  message.textContent='Answers save after you pause typing or leave a field. Wait for Saved before Send.';
   const books=el('section',undefined,'question-connect'),questions=el('section');
   const bookStatus=el('span','Passport · Connecting'),connectBook=el('button','Connect Passport','secondary'),
     unlockBook=el('button','Unlock this device','secondary');
@@ -77,6 +77,7 @@ else {
   function scrubRow(row) {
     clearTimeout(row.timer);row.timer=null;row.generation++;row.dirty=false;row.saving=false;
     row.edited=false;row.hydrated=false;row.source=null;row.entityId='';row.topicRemoved=false;
+    row.topicChoice=row.signedTopic;
     row.files=[];row.shareFiles=[];row.file.value='';row.fileList.replaceChildren();
     row.suggestions.replaceChildren();setValue(row,row.q.format==='multiple_choice'?[]:'');
     row.keep.checked=true;row.selected=true;row.reuse.checked=false;row.reusable=false;
@@ -84,6 +85,7 @@ else {
     row.tagSummary.textContent=row.scope==='business'?'Business':'Personal';
     row.entity.replaceChildren();row.entityWrap.hidden=true;
     if(row.topicToggle)row.topicToggle.textContent='Remove topic';
+    if(row.topicSelect)row.topicSelect.value=row.topicChoice||'';
     prepared=null;sent=false;
     if(activeDialog){activeDialog.dispatchEvent(new Event('cancel',{cancelable:true}));
       if(activeDialog.open)activeDialog.close();activeDialog.remove();activeDialog=null;}
@@ -125,28 +127,39 @@ else {
       row.keep.checked=row.selected;row.reusable=!!saved.fields.reusable;row.reuse.checked=row.reusable;
       row.entityId=saved.fields.entityId||'';
       row.topicRemoved=!!saved.fields.topicRemoved;
+      const choice=saved.fields.topicChoice;
+      row.topicChoice=row.topicRemoved?null:
+        choice&&context.matching?.allowedRequestTypes.includes(choice)&&
+        topicDescriptor(choice)?.supportedFormats.includes(row.q.format)?choice:row.signedTopic;
+      if(row.topicSelect)row.topicSelect.value=row.topicChoice||'';
       if(row.topicToggle)row.topicToggle.textContent=row.topicRemoved?'Restore topic':'Remove topic';
-      rowStatus(row,'Saved privately on this device. Nothing sent.');
+      rowStatus(row,'Saved privately in your Passport. Nothing sent.');
     }
     renderEntities(row);updateReuse(row);renderSuggestions(row);
   }
+  function rowContext(row) {
+    if(!context.matching)return context;
+    return {...context,matching:{...context.matching,requests:context.matching.requests.map(request=>
+      request.questionId===row.q.id?{...request,requestType:row.topicChoice}:request)}};
+  }
   function renderEntities(row) {
-    const request=context.matching?.requests.find(r=>r.questionId===row.q.id),
-      descriptor=row.topicRemoved?null:topicDescriptor(request?.requestType);
+    const descriptor=topicDescriptor(row.topicChoice);
     row.entityWrap.hidden=!descriptor;
-    if (!descriptor) {row.entityId='';row.tagSummary.textContent=row.scope==='business'?'Business':'Personal';return;}
+    if (!descriptor) {row.entityId='';row.tagSummary.textContent=row.scope==='business'?'Business':'Personal';
+      if(row.addWho)row.addWho.hidden=true;return;}
     const choices=state(row.scope).document?localEntities(state(row.scope).document,descriptor.entityKind):[];
     row.entity.replaceChildren();const blank=el('option',`Choose ${descriptor.entityKind}`);blank.value='';row.entity.append(blank);
     for (const choice of choices) {const option=el('option',choice.name);option.value=choice.id;row.entity.append(option);}
     if (!choices.some(c=>c.id===row.entityId)) row.entityId='';
     row.entity.value=row.entityId;
     row.tagSummary.textContent=`${row.scope==='business'?'Business':'Personal'} · ${descriptor.label}${row.entityId?' · '+(choices.find(c=>c.id===row.entityId)?.name||''):''}`;
+    if(row.addWho){row.addWho.hidden=false;row.addWhoName.placeholder=`Name of ${descriptor.entityKind}`;}
   }
   function updateReuse(row) {
     const document=state(row.scope).document,
-      request=row.topicRemoved?null:context.matching?.requests.find(r=>r.questionId===row.q.id);
+      request=rowContext(row).matching?.requests.find(r=>r.questionId===row.q.id);
     const classified=document&&request?.requestType&&row.entityId&&validValue(row.q,row.value)&&
-      classificationFor(document,{...context,subject:questionSubject(context,row.scope)},row.q,
+      classificationFor(document,{...rowContext(row),subject:questionSubject(context,row.scope)},row.q,
         request.requestType,row.entityId,true);
     row.reusable=!!classified;row.reuse.checked=row.reusable;row.reuseLabel.hidden=!classified;
   }
@@ -155,40 +168,44 @@ else {
     const document=state(row.scope).document;
     if (!document)return;
     const own=savedDraft(document,context,row.q,row.scope)?.fields.answerEntryId;
-    const hits=exactSuggestions(document,row.topicRemoved?{...context,matching:null}:context,
-      row.topicRemoved?{...row.q,label:null}:row.q,row.scope,{entityId:row.entityId})
+    const local=row.topicRemoved?{...context,matching:null}:rowContext(row);
+    const hits=(row.topicChoice?entitySuggestions(document,local,row.q,row.scope,{entityId:row.entityId}):
+      exactSuggestions(document,local,row.topicRemoved?{...row.q,label:null}:row.q,row.scope))
       .filter(hit=>hit.source.entryId!==own);
     if (!hits.length)return;
     row.suggestions.append(el('strong','From your Passport'));
     for (const hit of hits.slice(0,8)) {
       const item=el('div',undefined,'question-suggestion'),value=el('p',
         Array.isArray(hit.value)?hit.value.join(', '):hit.value),button=el('button','Use answer','secondary');
-      const source=el('small',`Saved answer · ${hit.source.question||row.q.title}`,'question-source');
+      const source=el('small',`Saved answer · ${hit.entity?'About '+hit.entity.name+' · ':''}${hit.source.question||row.q.title}`,'question-source');
       button.type='button';button.addEventListener('click',()=>{
+        if(hit.entity){row.entityId=hit.entity.id;row.entity.value=hit.entity.id;renderEntities(row);}
         setValue(row,hit.value);row.source=hit.source;row.edited=true;
         updateReuse(row);
         const duplicates=propagateExact(context,rows,row);
-        queueSave(row);rowStatus(row,'Answer chosen from Passport. Review before sending.');
-        for(const other of duplicates){setValue(other,other.value);updateReuse(other);queueSave(other);}
+        queueSave(row,true);rowStatus(row,'Answer chosen from Passport. Saving privately…');
+        for(const other of duplicates){setValue(other,other.value);updateReuse(other);queueSave(other,true);}
       });item.append(source,value,button);row.suggestions.append(item);
     }
+    if(hits.length>8)row.suggestions.append(el('small','Choose who in Tags to narrow the saved answers.'));
   }
-  function queueSave(row) {
+  function queueSave(row,immediate=false) {
     row.dirty=true;row.status.textContent='Saving privately…';prepared=null;sent=false;
-    clearTimeout(row.timer);row.timer=setTimeout(()=>void persistRow(row),700);refresh();
+    clearTimeout(row.timer);row.timer=immediate?null:setTimeout(()=>void persistRow(row),700);refresh();
+    if(immediate)void persistRow(row);
   }
   async function persistRow(row) {
     clearTimeout(row.timer);row.timer=null;
     if (!row.dirty)return;
     const generation=row.generation,scope=row.scope,q=row.q,value=structuredClone(row.value),
       selected=row.selected,reusable=row.reusable,subject=questionSubject(context,scope),
-      entityId=row.entityId,source=row.source,topicRemoved=row.topicRemoved;
+      entityId=row.entityId,source=row.source,topicRemoved=row.topicRemoved,topicChoice=row.topicChoice;
     row.dirty=false;row.saving=true;refresh();
     try {
       await session.saveToScope(scope,doc=>{
-        const prior=savedDraft(doc,context,q,scope),request=topicRemoved?null:
-          context.matching?.requests.find(r=>r.questionId===q.id),
-          classified=request?.requestType&&entityId?classificationFor(doc,{...context,subject},q,
+        const prior=savedDraft(doc,context,q,scope),local=rowContext({...row,topicChoice}),
+          request=local.matching?.requests.find(r=>r.questionId===q.id),
+          classified=request?.requestType&&entityId?classificationFor(doc,{...local,subject},q,
             request.requestType,entityId,reusable):null;
         const existing=prior?.fields.answerEntryId&&doc.entries.find(e=>e.id===prior.fields.answerEntryId&&
           e.versions.at(-1).kind==='answer');
@@ -201,7 +218,7 @@ else {
         const answerEntryId=existing?.id||answer.entries.at(-1).id;
         const fields={requestId:context.requestId,taskId:context.taskId,questionId:q.id,
           questionDigest:q.digest,answerFormat:q.format,answerOptions:q.options,subject,
-          bookScope:scope,value,selected,reusable,entityId,topicRemoved,answerEntryId};
+          bookScope:scope,value,selected,reusable,entityId,topicRemoved,topicChoice,answerEntryId};
         return addEntry(answer,{...(prior?{id:prior.entryId}:{}),kind:'answer_draft',title:q.title,fields});
       });
       if (row.generation===generation&&!row.dirty) rowStatus(row,'Saved privately. Nothing sent.');
@@ -218,6 +235,8 @@ else {
     await persistRow(row);
     if (row.dirty) {row.scopePicker.value=row.scope;return;}
     row.scope=next;row.generation++;row.hydrated=false;row.edited=false;row.entityId='';row.source=null;
+    row.topicChoice=row.signedTopic;row.topicRemoved=false;
+    if(row.topicSelect)row.topicSelect.value=row.topicChoice||'';
     setValue(row,row.q.format==='multiple_choice'?[]:'');rowStatus(row,'');
     row.tagSummary.textContent=next==='business'?'Business':'Personal';updateReuse(row);refresh();renderBooks();
   }
@@ -225,7 +244,9 @@ else {
     const scope=questionScope(context,q),section=el('section',undefined,'batch-question'),form=el('div'),
       connect=el('p','Connect the selected Passport book to answer privately.'),status=el('p','', 'muted'),
       suggestions=el('div',undefined,'question-suggestions');status.setAttribute('role','status');
-    const row={q,scope,section,form,connect,status,suggestions,value:q.format==='multiple_choice'?[]:'',
+    const signedTopic=context.matching?.requests.find(r=>r.questionId===q.id)?.requestType||null;
+    const row={q,scope,section,form,connect,status,suggestions,signedTopic,topicChoice:signedTopic,
+      value:q.format==='multiple_choice'?[]:'',
       selected:true,reusable:false,source:null,entityId:'',topicRemoved:false,edited:false,hydrated:false,dirty:false,
       saving:false,generation:0,timer:null,wasConnected:false};
     section.append(el('h2',q.title));
@@ -238,25 +259,44 @@ else {
     }
     scopePicker.value=scope;scopeLabel.append(scopePicker);tags.append(scopeLabel);
     scopePicker.addEventListener('change',()=>void setScope(row,scopePicker.value));
-    const request=context.matching?.requests.find(r=>r.questionId===q.id),descriptor=topicDescriptor(request?.requestType);
+    const descriptor=topicDescriptor(signedTopic);
+    if(context.matching){
+      const topicLabel=el('label','Topic'),topicSelect=el('select');row.topicSelect=topicSelect;
+      const none=el('option','No topic');none.value='';topicSelect.append(none);
+      for(const id of context.matching.allowedRequestTypes){
+        const choice=topicDescriptor(id);if(!choice?.supportedFormats.includes(q.format))continue;
+        const option=el('option',choice.label);option.value=id;topicSelect.append(option);
+      }
+      topicSelect.value=signedTopic||'';topicLabel.append(topicSelect);tags.append(topicLabel);
+      topicSelect.addEventListener('change',()=>{
+        row.topicChoice=topicSelect.value||null;row.topicRemoved=!row.topicChoice;
+        row.entityId='';row.source=null;row.edited=true;
+        if(row.topicToggle)row.topicToggle.textContent=row.topicChoice?'Remove topic':'Restore topic';
+        renderEntities(row);updateReuse(row);renderSuggestions(row);queueSave(row,true);
+      });
+    }
     const entityWrap=el('label',descriptor?`About ${descriptor.entityKind}`:'About'),entity=el('select');
     row.entityWrap=entityWrap;row.entity=entity;entityWrap.append(entity);tags.append(entityWrap);
     if(descriptor){const toggle=el('button','Remove topic','secondary');toggle.type='button';row.topicToggle=toggle;
-      toggle.addEventListener('click',()=>{row.topicRemoved=!row.topicRemoved;row.entityId='';row.source=null;
+      toggle.addEventListener('click',()=>{row.topicRemoved=!row.topicRemoved;
+        row.topicChoice=row.topicRemoved?null:row.signedTopic;row.topicSelect.value=row.topicChoice||'';
+        row.entityId='';row.source=null;
         toggle.textContent=row.topicRemoved?'Restore topic':'Remove topic';renderEntities(row);
-        updateReuse(row);renderSuggestions(row);queueSave(row);});tags.append(toggle);}
+        updateReuse(row);renderSuggestions(row);queueSave(row,true);});tags.append(toggle);}
     entity.addEventListener('change',()=>{row.entityId=entity.value;row.source=null;row.edited=true;
       renderEntities(row);updateReuse(row);renderSuggestions(row);queueSave(row);});
-    if (descriptor) {
+    if (context.matching?.allowedRequestTypes.some(id=>topicDescriptor(id)?.supportedFormats.includes(q.format))) {
       const addWho=el('div',undefined,'question-add-who'),name=el('input'),add=el('button','Add privately','secondary');
-      name.type='text';name.maxLength=120;name.placeholder=`Name of ${descriptor.entityKind}`;add.type='button';
+      row.addWho=addWho;row.addWhoName=name;addWho.hidden=!descriptor;
+      name.type='text';name.maxLength=120;name.placeholder=descriptor?`Name of ${descriptor.entityKind}`:'Name';add.type='button';
       add.addEventListener('click',async()=>{
+        const selectedDescriptor=topicDescriptor(row.topicChoice);if(!selectedDescriptor)return;
         const value=name.value.trim();if(!value)return;
         try {
           let id;
           await session.saveToScope(row.scope,doc=>{
             const next=addEntry(doc,{kind:'passport.entity',title:value,
-              fields:{entityKind:descriptor.entityKind,name:value}});
+              fields:{entityKind:selectedDescriptor.entityKind,name:value}});
             id=next.entries.at(-1).id;return next;
           });
           row.entityId=id;row.edited=true;name.value='';renderEntities(row);updateReuse(row);
@@ -276,7 +316,7 @@ else {
         const label=el('label'),input=el('input');input.type=q.format==='multiple_choice'?'checkbox':'radio';
         input.name=`answer-${q.id}`;input.value=option.value;input.dataset.answerChoice='';
         label.append(input,document.createTextNode(option.label));form.append(label);
-        input.addEventListener('change',()=>changed(row));
+        input.addEventListener('change',()=>changed(row,true));
       }
     }
     form.append(suggestions);
@@ -322,12 +362,12 @@ else {
     section.append(tags,connect,form,status);questions.append(section);
     return row;
   }
-  function changed(row) {
+  function changed(row,immediate=false) {
     row.value=selectedValue(row);row.edited=true;row.source=null;
     updateReuse(row);
     const duplicates=propagateExact(context,rows,row);
-    queueSave(row);
-    for (const other of duplicates) {setValue(other,other.value);updateReuse(other);queueSave(other);}
+    queueSave(row,immediate);
+    for (const other of duplicates) {setValue(other,other.value);updateReuse(other);queueSave(other,immediate);}
   }
   rows.push(...context.questions.map(buildRow));
   host.reportViewReady('questions');
@@ -382,8 +422,17 @@ else {
       const result=await prepare();
       const dialog=el('dialog'),heading=el('h2','Review what will be sent'),list=el('div');
       for(const answer of result.answers) {
-        const q=context.questions.find(q=>q.id===answer.id);
+        const row=rows.find(row=>row.q.id===answer.id),q=row.q,doc=state(row.scope).document;
+        const descriptor=topicDescriptor(row.topicChoice);
+        const who=row.entityId&&descriptor?localEntities(doc,descriptor.entityKind).find(e=>e.id===row.entityId)?.name:null;
+        const draft=savedDraft(doc,context,q,row.scope);
+        const current=doc.entries.find(e=>e.id===draft?.fields.answerEntryId)?.versions.at(-1);
+        const reused=current?.fields.reusedFrom;
+        const source=reused&&doc.entries.find(e=>e.id===reused.entryId)?.versions.find(v=>v.version===reused.version);
         list.append(el('h3',q.title),el('p',Array.isArray(answer.value)?answer.value.join(', '):answer.value));
+        list.append(el('p',`Saved in ${row.scope==='business'?'Business':'Personal'} Passport · About: ${who||'not specified'}`));
+        list.append(el('p',`Saved source: ${source?.fields.question||source?.title||
+          (reused?'unavailable':'your answer to this question')}`));
         list.append(el('p',`For ${(q.recipients||[context.recipient]).map(r=>r.name).join(', ')}`));
         for(const file of answer.files)list.append(el('p',`File: ${file.name}`));
       }

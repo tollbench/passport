@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createVault,addEntry} from '../src/toll_passport/web/vault.mjs';
-import {questionScope,questionSubject,propagateExact,savedDraft,exactSuggestions} from '../src/toll_passport/web/unified-question-model.mjs';
+import {questionScope,questionSubject,propagateExact,savedDraft,exactSuggestions,entitySuggestions} from '../src/toll_passport/web/unified-question-model.mjs';
 const digest='a'.repeat(64),requestId=crypto.randomUUID();
 const context={scope:'personal',subject:'personal-subject',bookSubjects:{personal:'personal-subject',business:'business-subject'},
   requestId,taskId:'task',recipient:{id:'maker',name:'Maker'},matching:{requests:[{questionId:'one',requestType:null},{questionId:'two',requestType:null},
@@ -80,4 +80,43 @@ test('canonical topic reuses different wording and digest only for same entity, 
     fields:{question:one.title,subject:'business-subject',value:'',answerOptions:one.options,
       scope:'task',taskId:'task'}});
   assert.equal(exactSuggestions(cleared,ctx,two,'business',{entityId}).length,0);
+});
+test('company description suggestions name exact organizations before entity selection',async()=>{
+  const first={...q('one'),title:'Describe your company'},second={...q('two'),
+    digest:'b'.repeat(64),title:'What does the business do?'},third={...q('three'),title:'Project description'};
+  const ctx={...context,matching:{allowedRequestTypes:['organization.description','project.description','person.biography'],
+    requests:[{questionId:'one',requestType:'organization.description',contextKey:'profile'},
+      {questionId:'two',requestType:'organization.description',contextKey:'profile'},
+      {questionId:'three',requestType:'project.description',contextKey:'profile'}]}};
+  let doc=(await createVault()).document;
+  const entities=[];
+  for(const [kind,name] of [['organization','Tollbench'],['organization','Other Co'],
+    ['project','Tollbench'],['person','Tollbench']]){
+    doc=addEntry(doc,{kind:'passport.entity',title:name,fields:{entityKind:kind,name}});
+    entities.push(doc.entries.at(-1).id);
+  }
+  for(const [id,value] of [[entities[0],'Plans work'],[entities[1],'Makes music']]){
+    doc=addEntry(doc,{kind:'answer',title:first.title,fields:{question:first.title,
+      subject:'business-subject',value,answer:value,answerOptions:[],scope:'reusable',
+      classification:{catalogVersion:'1',entityId:id,requestType:'organization.description',
+        topic:'description',valueType:'string',answerFormat:'short_answer',contextKey:'profile',
+        taskBinding:{scope:'reusable'}}}});
+  }
+  const hits=entitySuggestions(doc,ctx,second,'business');
+  assert.deepEqual(hits.map(hit=>[hit.entity.name,hit.value]),[['Tollbench','Plans work'],['Other Co','Makes music']]);
+  assert.equal(entitySuggestions(doc,ctx,second,'business',{entityId:entities[0]}).length,1);
+  assert.equal(entitySuggestions(doc,ctx,second,'personal').length,0);
+  assert.equal(entitySuggestions(doc,ctx,third,'business').length,0);
+  const rows=[{q:first,scope:'business',entityId:entities[0],topicChoice:'organization.description',
+      value:'Plans work',edited:true},{q:second,scope:'business',entityId:entities[0],
+      topicChoice:'organization.description',value:'',edited:false},
+    {q:second,scope:'business',entityId:entities[1],topicChoice:'organization.description',
+      value:'',edited:false},{q:second,scope:'business',entityId:'',topicChoice:'organization.description',
+      value:'',edited:false}];
+  assert.deepEqual(propagateExact(ctx,rows,rows[0]),[rows[1]]);
+  assert.equal(rows[2].value,'');assert.equal(rows[3].value,'');
+  const otherTopic=[{...rows[0],topicChoice:'person.biography'},{...rows[1],value:''}];
+  assert.deepEqual(propagateExact(ctx,otherTopic,otherTopic[0]),[]);
+  const invalid=[{...rows[0],topicChoice:'organization.unknown'},{...rows[1],value:''}];
+  assert.deepEqual(propagateExact(ctx,invalid,invalid[0]),[]);
 });

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0a16
+
+- Add a dedicated-origin, questions-only Passport view with separate encrypted Personal and Business books, exact saved-answer suggestions, and private answer autosave after a 700 ms pause or field blur. The interface reports Saved only after the encrypted save succeeds.
+- Add opt-in remembered-device key wrapping, explicit lock across active Passport frames, and a selected-answer review naming each question, book, person or task, saved source, answer, and recipients. Send still releases only the reviewed selection.
+- Add the canonical Company description topic. A collapsed per-question topic control permits only signed allowed, format-compatible choices; saved suggestions name matching companies before the user chooses one, and Use answer binds that exact company.
+- Preserve existing book and question channels; dedicated-origin deployment, host integration, and independent security review remain separate gates.
+
 ## 0.1.0a15
 
 - Autofill a unique compatible saved answer for a unique entity using exact public tags. No AI or fuzzy matching.

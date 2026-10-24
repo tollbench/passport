@@ -1,6 +1,6 @@
 // Copyright 2026 Steven Ochs and Tollbench. SPDX-License-Identifier: Apache-2.0
 import {validValue} from './question-batch-channel.mjs';
-import {classificationFor,findTopicCandidates} from './topic-catalog.mjs';
+import {classificationFor,findTopicCandidates,localEntities,topicDescriptor} from './topic-catalog.mjs';
 import {canonicalAnswerLabel,findAnswerCandidates} from './answers.mjs';
 
 export function questionScope(context, question, choice = null) {
@@ -17,8 +17,11 @@ export function questionSubject(context, scope) {
 }
 const request = (context,q) => context.matching?.requests.find(r=>r.questionId===q.id) || null;
 const normalizedQuestion = value => value.trim().replace(/\s+/g,' ').toLowerCase();
-export function duplicateKey(context,q,scope,entityId='',topicRemoved=false) {
-  const r=topicRemoved?null:request(context,q);
+export function duplicateKey(context,q,scope,entityId='',topicRemoved=false,topicChoice=undefined) {
+  const signed=request(context,q),r=topicRemoved?null:
+    topicChoice===undefined?signed:topicChoice?{...signed,requestType:topicChoice}:null;
+  if(topicChoice && (!context.matching?.allowedRequestTypes.includes(topicChoice)||
+      !topicDescriptor(topicChoice)?.supportedFormats.includes(q.format)))return null;
   if(r?.requestType&&!entityId)return null;
   const recipients=(q.recipients||[context.recipient]).map(r=>r.id).sort();
   return JSON.stringify([scope,questionSubject(context,scope),q.format,q.options,
@@ -27,13 +30,13 @@ export function duplicateKey(context,q,scope,entityId='',topicRemoved=false) {
 }
 export function propagateExact(context,rows,source) {
   if (!validValue(source.q,source.value)) return [];
-  const key=duplicateKey(context,source.q,source.scope,source.entityId,source.topicRemoved);
+  const key=duplicateKey(context,source.q,source.scope,source.entityId,source.topicRemoved,source.topicChoice);
   if(key===null)return [];
   const changed=[];
   for (const row of rows) {
     if (row===source || row.edited || row.value !== '' &&
         !(Array.isArray(row.value)&&row.value.length===0) ||
-        duplicateKey(context,row.q,row.scope,row.entityId,row.topicRemoved)!==key ||
+        duplicateKey(context,row.q,row.scope,row.entityId,row.topicRemoved,row.topicChoice)!==key ||
         !validValue(row.q,source.value)) continue;
     row.value=structuredClone(source.value);
     row.propagatedFrom=source.q.id;
@@ -84,4 +87,12 @@ export function exactSuggestions(document,context,q,scope,{entityId=''}={}) {
   }
   return result.sort((a,b)=>b.source.createdAt.localeCompare(a.source.createdAt)||
     a.source.entryId.localeCompare(b.source.entryId));
+}
+export function entitySuggestions(document,context,q,scope,{entityId=''}={}) {
+  const r=request(context,q),descriptor=topicDescriptor(r?.requestType);
+  if(!document||!descriptor)return [];
+  return localEntities(document,descriptor.entityKind)
+    .filter(entity=>!entityId||entity.id===entityId)
+    .flatMap(entity=>exactSuggestions(document,context,q,scope,{entityId:entity.id})
+      .map(hit=>({...hit,entity:{id:entity.id,name:entity.name}})));
 }

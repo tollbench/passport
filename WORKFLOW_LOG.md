@@ -420,3 +420,40 @@ host. Final synthetic gates: 83 Node tests pass; isolated Chromium confirms
 batch/single release, immediate encrypted autosave, cross-request restore,
 save-failure refusal, delayed load after Lock, and cross-frame active Lock.
 The host must still gate native takeover on both view-ready and connected true.
+
+Local a16 release preparation: bumped package, citation and changelog to
+`0.1.0a16`. The selected-answer review now names the question, Personal or
+Business book, known person/entity or task, saved source, answer and signed
+recipients. Restored answers say they were saved in Passport, and Use answer
+and choice changes start private saves immediately; typed text starts saving
+after a 700 ms pause or field blur. A queued save is not called durable until
+the encrypted save succeeds and Saved appears. The focused synthetic Chromium
+fixture passed after this change, including review content, both question
+channels, failed-save refusal and explicit release. The first local build
+attempt could not fetch pinned Hatchling inside the sandbox; an isolated
+environment then installed public Hatchling 1.27.0 and built wheel and sdist
+without publishing. The wheel contains all 26 source web assets (22 modules),
+including the new lock channel, and its packaged parent-origin policy remains
+empty. An initial local build was superseded after the final company-topic
+review and packaging pass; no tag, push, PyPI publication or site deployment
+occurred.
+
+Final coverage follow-up from root review: added canonical
+`organization.description` Company description to the packaged JSON and module
+catalogs, plus a collapsed local topic selector limited to signed allowed types
+and compatible question formats. The signed request remains unchanged. Named
+exact-entity suggestions can be seen before choosing an entity; clicking Use
+answer binds that entity, while unknown or different entities never propagate
+automatically. The focused catalog/model suite passed 16/16, and the isolated
+Chromium fixture exercised local topic selection, private company creation,
+saved source suggestion, selected company binding, review provenance and
+cancel without release. A browser fixture load/hydration race was corrected by
+waiting for the restored answer before its failed-save test; no runtime change
+was needed for that race. Read-only public version checks found no official
+`v0.1.0a16` tag and PyPI returned HTTP 404 for 0.1.0a16 before finalizing the
+candidate. Final local artifact SHA256: wheel
+`1126e87b67449ae7ce5a7bb630bda0c5566ed5f46eca6dbf1cb2a71190c2e38d`,
+sdist `89ffe4758f06d12e351b0729f31e2f6b99c662d7e8078c5994939c559c23c3ba`.
+The wheel was byte-compared with all 26 source web assets, including 22 modules
+and both Company description catalog forms; its parent-origin policy stays
+empty. No publication or deployment occurred.

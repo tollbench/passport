@@ -90,6 +90,17 @@ console.log(JSON.stringify(out));"""
     html = PARENT.replace('CONTEXT', json.dumps(CONTEXT)).replace('ENVELOPES',json.dumps(public))
     single_html = PARENT.replace('CONTEXT', json.dumps(SINGLE)).replace('ENVELOPES',json.dumps(public))
     single_html = single_html.replace('passport-question-batch-v1','passport-question-v1')
+    topic_context={**CONTEXT,'requestId':'44444444-4444-4444-8444-444444444444',
+      'taskId':'synthetic-company-task','questions':[
+        {'id':'one','digest':'c'*64,'title':'Describe Tollbench','format':'short_answer',
+         'label':None,'options':[],'bookScope':'business'},
+        {'id':'two','digest':'d'*64,'title':'What does the company do?',
+         'format':'short_answer','label':None,'options':[],'bookScope':'business'}],
+      'matching':{'version':1,'catalogVersion':'1',
+        'allowedRequestTypes':['organization.description','project.description'],
+        'requests':[{'questionId':'one','requestType':'organization.description','contextKey':'company-profile'},
+          {'questionId':'two','requestType':None,'contextKey':'company-profile'}]}}
+    topic_html=PARENT.replace('CONTEXT',json.dumps(topic_context)).replace('ENVELOPES',json.dumps(public))
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True,
             executable_path='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -103,6 +114,8 @@ console.log(JSON.stringify(out));"""
                 request.fulfill(status=200, content_type='text/html', body=html)
             elif url == 'https://app.example/single':
                 request.fulfill(status=200, content_type='text/html', body=single_html)
+            elif url == 'https://app.example/topic':
+                request.fulfill(status=200, content_type='text/html', body=topic_html)
             elif url == 'https://app.example/locked':
                 request.fulfill(status=200, content_type='text/html', body=LOCK_PARENT)
             elif url.startswith('https://passport.example/'):
@@ -166,17 +179,72 @@ console.log(JSON.stringify(out));"""
         expect(frame.get_by_label('Your answer').first).to_have_value('SYNTHETIC_PRIVATE_ANSWER',timeout=10000)
         expect(frame.get_by_label('Your answer').nth(1)).to_have_value('SYNTHETIC_BUSINESS_ANSWER',timeout=10000)
         frame.get_by_role('button',name='Review and Send').click()
+        review=frame.get_by_role('dialog')
+        expect(review).to_contain_text('What is your name?')
+        expect(review).to_contain_text('Personal Passport · About: not specified')
+        expect(review).to_contain_text('Saved source: your answer to this question')
+        expect(review).to_contain_text('SYNTHETIC_PRIVATE_ANSWER')
+        expect(review).to_contain_text('What does your project do?')
+        expect(review).to_contain_text('Business Passport · About: not specified')
+        expect(review).to_contain_text('SYNTHETIC_BUSINESS_ANSWER')
+        expect(review).to_contain_text('For Synthetic Agent')
         frame.get_by_role('button',name='Send selected answers').click()
         assert page.evaluate("received.filter(v=>v.type==='release').length") == 1
         assert page.evaluate("received.find(v=>v.type==='release').answers.map(a=>a.value)") == [
             'SYNTHETIC_PRIVATE_ANSWER','SYNTHETIC_BUSINESS_ANSWER']
         page.evaluate("failSave=true;document.getElementById('passport').src+='&failure=1'")
         frame=page.frame_locator('#passport')
+        frame.get_by_text('Passport · Connected').wait_for(timeout=10000)
+        expect(frame.get_by_label('Your answer').first).to_have_value('SYNTHETIC_PRIVATE_ANSWER',timeout=10000)
         frame.get_by_label('Your answer').first.fill('UNSAVED_NEW_ANSWER')
-        frame.get_by_text('Not saved. Your answer remains here; reconnect before sending.').wait_for(timeout=10000)
+        try:
+            frame.get_by_text('Not saved. Your answer remains here; reconnect before sending.').wait_for(timeout=10000)
+        except Exception:
+            print('SAVE FAILURE FRAME:',frame.locator('body').inner_text()[:1800])
+            print('SAVE FAILURE HOST:',page.evaluate("received.filter(v=>v.type==='request').map(v=>v.op+':'+v.scope)"))
+            print('ERRORS:',errors)
+            raise
         assert frame.get_by_role('button',name='Review and Send').is_disabled()
         assert page.evaluate("received.filter(v=>v.type==='release').length") == 1
         assert not errors,errors
+        topic_page=browser.new_page(ignore_https_errors=True)
+        topic_page.route('**/*',route)
+        topic_page.goto('https://app.example/topic')
+        topic_frame=topic_page.frame_locator('#passport')
+        topic_frame.get_by_text('Describe Tollbench').wait_for(timeout=10000)
+        topic_handle=topic_page.frame(url='https://passport.example/hosted.html?view=questions')
+        for scope,row in fixtures.items():
+            topic_handle.evaluate("""async ({scope,envelope,recovery})=>{
+              const {unlockVault}=await import('/vault.mjs');
+              const {createDeviceMemory,indexedDbDeviceStorage}=await import('/device-memory.mjs');
+              const opened=await unlockVault(envelope,recovery);
+              await createDeviceMemory(indexedDbDeviceStorage()).remember(
+                {ownerBinding:'x'.repeat(32),parentOrigin:'https://app.example'},scope,envelope.vaultId,opened.key);
+            }""",{'scope':scope,'envelope':row['envelope'],'recovery':row['recovery']})
+        topic_page.evaluate("document.getElementById('passport').src+='&connected=1'")
+        topic_frame=topic_page.frame_locator('#passport')
+        topic_frame.get_by_text('Passport · Connected').wait_for(timeout=10000)
+        second=topic_frame.locator('.batch-question').nth(1)
+        second.locator('summary').click()
+        second.get_by_label('Topic').select_option('organization.description')
+        second.locator('.question-add-who input').fill('Synthetic Co')
+        second.get_by_role('button',name='Add privately').click()
+        second.get_by_label('Your answer').fill('Makes plans for teams')
+        second.get_by_text('Saved privately. Nothing sent.').wait_for(timeout=10000)
+        topic_page.evaluate("document.getElementById('passport').src+='&again=1'")
+        topic_frame=topic_page.frame_locator('#passport')
+        first=topic_frame.locator('.batch-question').first
+        first.get_by_text('About Synthetic Co').wait_for(timeout=10000)
+        first.get_by_role('button',name='Use answer').click()
+        expect(first.get_by_label('Your answer')).to_have_value('Makes plans for teams')
+        first.get_by_text('Saved privately. Nothing sent.').wait_for(timeout=10000)
+        topic_frame.get_by_role('button',name='Review and Send').click()
+        topic_review=topic_frame.get_by_role('dialog')
+        expect(topic_review).to_contain_text('Business Passport · About: Synthetic Co')
+        expect(topic_review).to_contain_text('Saved source: What does the company do?')
+        topic_review.get_by_role('button',name='Keep private').click()
+        assert topic_page.evaluate("received.some(v=>v.type==='release')") is False
+        topic_page.close()
         page.evaluate("""()=>{
           window.bookFrame=document.createElement('iframe');bookFrame.id='book-frame';
           bookFrame.sandbox='allow-scripts allow-same-origin allow-downloads';

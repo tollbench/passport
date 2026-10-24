@@ -6,7 +6,9 @@ const descriptor=(requestType,label,choice=false)=>Object.freeze({requestType,la
 export const TOPIC_CATALOG=Object.freeze([
   descriptor('person.biography','Biography'),descriptor('person.food_preference','Food preference',true),
   descriptor('person.contact_preference','Contact preference',true),descriptor('pet.diet','Pet diet'),
-  descriptor('organization.target_audience','Organization audience'),descriptor('project.target_audience','Project audience'),
+  descriptor('organization.target_audience','Organization audience'),
+  descriptor('organization.description','Company description'),
+  descriptor('project.target_audience','Project audience'),
   descriptor('project.pitch_angle','Pitch angle'),descriptor('project.description','Project description'),
   descriptor('project.communication_tone','Communication tone',true),descriptor('project.podcast_preferences','Podcast preferences',true),
   Object.freeze({requestType:'person.food_restrictions',label:'Food restrictions',entityKind:'person',topic:'food_restrictions',valueType:'string[]',supportedFormats:Object.freeze(['multiple_choice'])})

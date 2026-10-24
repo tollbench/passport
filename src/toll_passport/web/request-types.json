@@ -60,6 +60,17 @@
       ]
     },
     {
+      "requestType": "organization.description",
+      "label": "Company description",
+      "entityKind": "organization",
+      "topic": "description",
+      "valueType": "string",
+      "supportedFormats": [
+        "short_answer",
+        "written_response"
+      ]
+    },
+    {
       "requestType": "project.target_audience",
       "label": "Project audience",
       "entityKind": "project",
