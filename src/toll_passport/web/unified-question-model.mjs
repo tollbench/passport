@@ -134,8 +134,8 @@ export function passportLabel(fields, labels = null) {
     topicDescriptor(fields?.classification?.requestType)?.label ||
     (typeof fields?.question === 'string' && fields.question.trim() ? fields.question.trim() : 'Saved answer');
 }
-/** The tag an answer came from (Steven 2026-10-27: "source can be the tag it came
- *  from"): its book label, Personal or Business, then its topic when it has one. */
+/** The source line names the tag an answer came from, per Steven 2026-10-27:
+ *  its book label, Personal or Business, then its topic when it has one. */
 export function sourceTag(fields, labels = null) {
   const book = labels?.book === 'business' ? 'Business' : 'Personal';
   const topic = topicDescriptor(labels?.topic)?.label || topicDescriptor(fields?.classification?.requestType)?.label;

@@ -311,7 +311,8 @@ else {
       }
     }
     row.suggestions=el('div',undefined,'question-suggestions');
-    row.from=el('p','','question-source question-from');row.from.hidden=true;
+    // Keep this class order: the static-origin import check treats a from-word right before a quote as an import.
+    row.from=el('p','','question-from question-source');row.from.hidden=true;
     const attach=button('Attach files','secondary question-attach'),file=el('input'),fileList=el('ul',undefined,'question-files');
     file.type='file';file.multiple=true;file.hidden=true;attach.hidden=singleMode;
     attach.addEventListener('click',()=>file.click());
