@@ -19,7 +19,7 @@ It only suggests. The owner still sees and chooses what is reused or shared.
 | Model | `minishlab/potion-base-8M` (Model2Vec static embeddings, distilled from `BAAI/bge-base-en-v1.5`) |
 | License | MIT (model card); attribution in `THIRD_PARTY_NOTICES.md` and `NOTICE` |
 | Revision | `bf8b056651a2c21b8d2565580b8569da283cab23` |
-| Size in the package | about 10.5 MB (10.0 MiB) across six files; 7.9 MB in the wheel after compression |
+| Size in the package | about 10.5 MB (10.0 MiB) across seven files; 7.7 MB compressed inside the wheel |
 | Shape | 29,528 WordPiece tokens x 256 numbers, int8 per row with one float32 scale per row |
 
 Why this one: it is MIT, so it can ship inside an Apache-2.0 package; it is a
