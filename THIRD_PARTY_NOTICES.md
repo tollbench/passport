@@ -24,7 +24,7 @@ Any future vendored material must add its source, exact version, license and req
 
 ### Phosphor Icons
 
-- Use: SVG path data for the plug icons in the hosted question sheet.
+- Use: SVG path data for the "plugs" and "plugs-connected" icons (bold weight) in the hosted question sheet (`web/questions-only.mjs`).
 - Source: Phosphor Icons, https://phosphoricons.com , https://github.com/phosphor-icons/core .
 - License: MIT, Copyright (c) 2023 Phosphor Icons.
 
