@@ -129,7 +129,7 @@ test('company description suggestions name exact organizations before entity sel
   const invalid=[{...rows[0],topicChoice:'organization.unknown'},{...rows[1],value:''}];
   assert.deepEqual(propagateExact(ctx,invalid,invalid[0]),[]);
 });
-import {BOOK,bookSubject,savedAnswers,orderSuggestions,answerEntry,addAnswer,fallbackLabels,passportLabel,answerText} from '../src/toll_passport/web/unified-question-model.mjs';
+import {BOOK,bookSubject,savedAnswers,orderSuggestions,answerEntry,addAnswer,fallbackLabels,passportLabel,sourceTag,answerText} from '../src/toll_passport/web/unified-question-model.mjs';
 test('one book: every question saves to personal; business stays a label only',()=>{
   assert.equal(BOOK,'personal');
   assert.equal(bookSubject(context),'personal-subject');
@@ -158,4 +158,20 @@ test('saved answers fit the question kind, newest first, deduped; exact wording 
   assert.equal(answerText(choice,['red']),'Red');
   assert.deepEqual(savedAnswers(doc,{...context,subject:'other',bookSubjects:{personal:'other',business:'other2'}},text),[]);
   assert.equal(passportLabel({question:'Q'},{topic:'project.description'}),'Project description');
+});
+test('labels ride the saved version; the source line is the tag it came from',async()=>{
+  let doc=(await createVault()).document;
+  doc=addAnswer(doc,answerEntry(context,{...q('x'),title:'What does it do?'},'Plans',{book:'business',topic:'project.description'}));
+  doc=addAnswer(doc,answerEntry(context,{...q('y'),title:'Your name?'},'Ada',{book:'personal',topic:null}));
+  const [plans,ada]=doc.entries.map(e=>e.versions.at(-1));
+  assert.deepEqual(plans.labels,{book:'business',topic:'project.description'});
+  assert.deepEqual(ada.labels,{book:'personal'});
+  assert(!Object.hasOwn(plans.fields,'labels')&&!Object.hasOwn(ada.fields,'labels'));
+  // A label the vault refuses is an error, never a silent copy into the fields.
+  assert.throws(()=>addAnswer(doc,{...answerEntry(context,q('z'),'x',{book:'personal'}),labels:{'Bad Name':'x'}}));
+  const text={...q('t'),title:'Anything'};
+  assert.deepEqual(savedAnswers(doc,context,text).map(c=>c.tag).sort(),['Business · Project description','Personal']);
+  assert.equal(sourceTag({question:'Q'},null),'Personal');
+  assert.equal(sourceTag({question:'Q'},{book:'business'}),'Business');
+  assert.equal(sourceTag({classification:{requestType:'project.description'}},{book:'personal'}),'Personal · Project description');
 });

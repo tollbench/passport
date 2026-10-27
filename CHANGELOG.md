@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0a18
+
+- One book. Personal and Business are one encrypted book now; "Business" is a label on an answer or note, not a second place to save. An older Business book moves in once, inside the browser, with a Business label on everything it brings. Its old encrypted copy is left untouched.
+- Code lock. Open your book with a 6-digit code. The code alone cannot open it: the browser also needs a share the server gives back only after the right code. Ten wrong tries turn the code off, and the recovery file still opens the book so you can pick a new code. A book stays open on the device until you lock it or log in again. The reference server half is `toll_passport.code_lock`; `toll-passport code-key PATH` makes its key file.
+- Mini Passport on the card. The questions sheet opens your book in a small pop-up inside the same box: type your code, use your recovery key, or set up a new book. Nothing opens a new tab. Every refusal says what happened in plain words.
+- Cleaned questions. Each question shows only the question, your answer, Attach files and one "Save to my Passport" box. Send goes first to the agents who asked; the checked answers are saved after. An answer filled from your book says where it came from by its tag, for example "From your Passport · Business".
+- Organizer. A small model that runs inside the box (potion-base-8M, MIT) ranks your saved answers for a question and labels new answers Personal or Business. It cannot reach the network.
+
 ## 0.1.0a17
 
 - Present optional Passport connection in one ordinary question sheet, with manual answers available before connection, inline scope/source/recipient details, compact attachments, and one explicit Send. Save to Passport remains a separate action.

@@ -1,4 +1,7 @@
-"""Synthetic, local-only host plus opaque iframe acceptance. No model/provider calls."""
+"""Synthetic, local-only host plus opaque iframe acceptance on the one book. No model/provider calls.
+
+The host has no code door, so the book keeps the recovery-file-first creation; the code
+door itself is covered by browser_code_lock.py. PASSPORT_WEB_ROOT=<web dir> tests a source tree."""
 import json
 import os
 import tempfile
@@ -9,7 +12,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
 from importlib.resources import files
-ASSETS = Path(str(files('toll_passport').joinpath('web')))
+ASSETS = Path(os.environ.get('PASSPORT_WEB_ROOT') or os.environ.get('PASSPORT_WEB') or str(files('toll_passport').joinpath('web')))
 HOST = '''<!doctype html><title>Synthetic Passport host</title><link rel=icon href=data:,><style>html,body{margin:0;height:100%;overflow:hidden}iframe{display:block}</style><iframe id="vault" sandbox="allow-scripts allow-downloads" src="/hosted.html" style="width:100%;height:100vh;border:0"></iframe><script type="module">
 import {PROTOCOL,validateReady,validateRequest,validateInit,validateResult} from './hosted-bridge.mjs';
 const frame=document.querySelector('iframe');
@@ -115,22 +118,19 @@ with tempfile.TemporaryDirectory(prefix='passport-hosted-') as tmp, ThreadingHTT
     f.locator('#entry-form button').click();expect(f.locator('#status')).to_contain_text('Action not confirmed')
     expect(f.locator('#entry-form [name=content]')).to_have_value('UNSAVED_CANARY')
     page.evaluate('window.fail=false')
-    # Switching requires in-frame consent and clears keys, plaintext, forms, suggestions, previews.
-    f.locator('#vault-scope').select_option('business')
-    f.locator('dialog').get_by_role('button',name='Cancel',exact=True).click();expect(f.locator('#vault-scope')).to_have_value('personal')
-    expect(f.locator('#entry-form [name=content]')).to_have_value('UNSAVED_CANARY')
-    f.locator('#vault-scope').select_option('business');f.locator('dialog').get_by_role('button',name='Continue',exact=True).click()
-    expect(f.locator('#create')).to_be_visible()
+    # Lock asks for nothing more here (the recovery file was saved) and clears keys, plaintext, forms, suggestions, previews.
+    f.locator('#lock').click();expect(f.locator('#locked')).to_be_visible()
+    expect(f.locator('#locked-heading')).to_have_text('Open your book with its recovery file.')
+    assert f.locator('#vault-scope').is_hidden() and f.locator('.book-selector').is_hidden()  # one book, no switcher
     assert 'PRIVATE_BODY_CANARY' not in f.locator('body').inner_text()
+    expect(f.locator('#entry-form [name=content]')).to_have_value('')
     expect(f.locator('#answer-suggestions')).to_be_empty();expect(f.locator('#share-preview')).to_be_empty()
-    f.locator('#vault-scope').select_option('personal');expect(f.locator('#locked')).to_be_visible()
     expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#entries')).to_contain_text('PRIVATE_BODY_CANARY')
     expect(f.locator('#book-heading')).to_be_focused()
     f.locator('#book-tools > summary').click()
-    # Backup + recovery restore into empty business scope, with no host key exposure.
     with page.expect_download() as d:f.locator('#backup').focus();f.locator('#backup').press('Enter')
+    assert d.value.suggested_filename=='passport-encrypted-backup.json'
     backup=Path(tmp)/'backup.json';d.value.save_as(backup)
-    f.locator('#vault-scope').select_option('business');f.locator('dialog').get_by_role('button',name='Continue',exact=True).click();expect(f.locator('#create')).to_be_visible()
     # Both restore files need their own ordinary visible user gesture. No chained picker.
     choosers=[];page.on('filechooser',lambda chooser:choosers.append(chooser))
     def choose_restore_file(control,path):
@@ -145,50 +145,51 @@ with tempfile.TemporaryDirectory(prefix='passport-hosted-') as tmp, ThreadingHTT
         before=len(choosers);choose_restore_file('restore-open' if open_book else 'restore',str(backup))
         expect(f.locator('#restore-pending')).to_be_visible();expect(f.locator('#restore-recovery-label')).to_be_visible()
         assert len(choosers)==before+1, 'backup selection must not launch a recovery picker'
-    stage_backup();assert page.evaluate("localStorage.getItem('business')") is None
+    # An actual competing ETag blocks replacement, preserving the stored snapshot.
+    f.locator('#add-information').click();f.locator('#entry-form [name=title]').fill('RESTORE_KEEP_CURRENT');f.locator('#entry-form [name=content]').fill('Preserve until replacement approved')
+    f.locator('#entry-form button').click();expect(f.locator('#entries .record')).to_have_count(4)
+    current=page.evaluate("localStorage.getItem('personal')")
+    stage_backup(True);choose_restore_file('restore-recovery',str(recovery));f.locator('dialog').get_by_role('button',name='Cancel',exact=True).click()
+    expect(f.locator('#restore-pending')).to_be_hidden();assert page.evaluate("localStorage.getItem('personal')")==current
+    stage_backup(True);f.locator('#delete-vault').click();f.locator('dialog').get_by_role('button',name='Cancel',exact=True).click()
+    expect(f.locator('#restore-pending')).to_be_visible();assert page.evaluate("localStorage.getItem('personal')")==current
+    page.evaluate("const saved=JSON.parse(localStorage.getItem('personal'));saved.etag='outside-edit';localStorage.setItem('personal',JSON.stringify(saved))")
+    changed=page.evaluate("localStorage.getItem('personal')")
+    choose_restore_file('restore-recovery',str(recovery));f.locator('dialog').get_by_role('button',name='Continue',exact=True).click()
+    expect(f.locator('#status')).to_contain_text('Save not confirmed');expect(f.locator('#restore-pending')).to_be_visible()
+    assert page.evaluate("localStorage.getItem('personal')")==changed;expect(f.locator('#entries .record')).to_have_count(4)
+    f.locator('#reload-vault').click();f.locator('dialog').get_by_role('button',name='Continue',exact=True).click();expect(f.locator('#locked')).to_be_visible();expect(f.locator('#restore-pending')).to_be_hidden()
+    f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#entries .record')).to_have_count(4)
+    stage_backup(True);f.locator('#lock').click();expect(f.locator('#locked')).to_be_visible();expect(f.locator('#restore-pending')).to_be_hidden()
+    f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#book')).to_be_visible()
+    stage_backup(True);choose_restore_file('restore-recovery',str(recovery));f.locator('dialog').get_by_role('button',name='Continue',exact=True).click()
+    expect(f.locator('#status')).to_contain_text('Backup restored');expect(f.locator('#entries .record')).to_have_count(3);expect(f.locator('#restore-pending')).to_be_hidden()
+    # Delete clears a pending restore and the hosted book; the backup then restores into the empty book.
+    stage_backup(True);f.locator('#delete-vault').click();f.locator('dialog').get_by_role('button',name='Continue',exact=True).click();expect(f.locator('#create')).to_be_visible();expect(f.locator('#restore-pending')).to_be_hidden()
+    assert page.evaluate("localStorage.getItem('personal')") is None
+    stage_backup();assert page.evaluate("localStorage.getItem('personal')") is None
     wrong_restore=json.loads(recovery.read_text());wrong_restore['key']='A'*43+'='
     choose_restore_file('restore-recovery',{'name':'wrong.json','mimeType':'application/json','buffer':json.dumps(wrong_restore).encode()})
     expect(f.locator('#status')).to_contain_text('Action not confirmed');expect(f.locator('#restore-pending')).to_be_visible()
     different=json.loads(recovery.read_text());different['vaultId']='00000000-0000-4000-8000-000000000099'
     choose_restore_file('restore-recovery',{'name':'different.json','mimeType':'application/json','buffer':json.dumps(different).encode()})
-    expect(f.locator('#status')).to_contain_text('Action not confirmed');assert page.evaluate("localStorage.getItem('business')") is None
+    expect(f.locator('#status')).to_contain_text('Action not confirmed');assert page.evaluate("localStorage.getItem('personal')") is None
     f.locator('#cancel-restore').click();expect(f.locator('#restore-pending')).to_be_hidden()
-    stage_backup();f.locator('#vault-scope').select_option('personal');expect(f.locator('#locked')).to_be_visible();expect(f.locator('#restore-pending')).to_be_hidden()
-    f.locator('#vault-scope').select_option('business');expect(f.locator('#create')).to_be_visible();expect(f.locator('#restore-pending')).to_be_hidden()
+    stage_backup();f.locator('#reload-vault').click();f.locator('dialog').get_by_role('button',name='Continue',exact=True).click()
+    expect(f.locator('#create')).to_be_visible();expect(f.locator('#restore-pending')).to_be_hidden()
     stage_backup();choose_restore_file('restore-recovery',str(recovery));expect(f.locator('#entries')).to_contain_text('PRIVATE_BODY_CANARY');expect(f.locator('#restore-pending')).to_be_hidden()
-    stage_backup(True);f.locator('#lock').click();expect(f.locator('#locked')).to_be_visible();expect(f.locator('#restore-pending')).to_be_hidden()
-    f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#book')).to_be_visible()
-    f.locator('#add-information').click();f.locator('#entry-form [name=title]').fill('RESTORE_KEEP_CURRENT');f.locator('#entry-form [name=content]').fill('Preserve until replacement approved')
-    f.locator('#entry-form button').click();expect(f.locator('#entries .record')).to_have_count(4)
-    current=page.evaluate("localStorage.getItem('business')")
-    stage_backup(True);choose_restore_file('restore-recovery',str(recovery));f.locator('dialog').get_by_role('button',name='Cancel',exact=True).click()
-    expect(f.locator('#restore-pending')).to_be_hidden();assert page.evaluate("localStorage.getItem('business')")==current
-    stage_backup(True);f.locator('#delete-vault').click();f.locator('dialog').get_by_role('button',name='Cancel',exact=True).click()
-    expect(f.locator('#restore-pending')).to_be_visible();assert page.evaluate("localStorage.getItem('business')")==current
-    # An actual competing ETag blocks replacement, preserving the stored snapshot.
-    page.evaluate("const saved=JSON.parse(localStorage.getItem('business'));saved.etag='outside-edit';localStorage.setItem('business',JSON.stringify(saved))")
-    changed=page.evaluate("localStorage.getItem('business')")
-    choose_restore_file('restore-recovery',str(recovery));f.locator('dialog').get_by_role('button',name='Continue',exact=True).click()
-    expect(f.locator('#status')).to_contain_text('Save not confirmed');expect(f.locator('#restore-pending')).to_be_visible()
-    assert page.evaluate("localStorage.getItem('business')")==changed;expect(f.locator('#entries .record')).to_have_count(4)
-    f.locator('#reload-vault').click();f.locator('dialog').get_by_role('button',name='Continue',exact=True).click();expect(f.locator('#locked')).to_be_visible();expect(f.locator('#restore-pending')).to_be_hidden()
-    f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#entries .record')).to_have_count(4)
-    stage_backup(True);choose_restore_file('restore-recovery',str(recovery));f.locator('dialog').get_by_role('button',name='Continue',exact=True).click()
-    expect(f.locator('#status')).to_contain_text('Backup restored');expect(f.locator('#entries .record')).to_have_count(3);expect(f.locator('#restore-pending')).to_be_hidden()
-    # Delete clears a pending restore and only the current hosted snapshot.
-    stage_backup(True);f.locator('#delete-vault').click();f.locator('dialog').get_by_role('button',name='Continue',exact=True).click();expect(f.locator('#create')).to_be_visible();expect(f.locator('#restore-pending')).to_be_hidden()
-    assert page.evaluate("localStorage.getItem('business')")==None
-    assert page.evaluate("localStorage.getItem('personal')")==saved
+    assert page.evaluate("localStorage.getItem('business')") is None  # nothing is ever written to the old Business row
     all_messages=json.dumps(page.evaluate('receipts'))
     secrets=['PRIVATE_BODY_CANARY','PRIVATE_TITLE_CANARY','PRIVATE_FILE_CANARY','PRIVATE_ANSWER_CANARY','UNSAVED_CANARY','RESTORE_KEEP_CURRENT',json.loads(recovery.read_text())['key']]
     assert all(secret not in all_messages for secret in secrets)
+    assert not any(q.get('op')=='save' and q.get('scope')!='personal' for q in page.evaluate('receipts'))
     # Reload persists only ciphertext; wrong recovery and tampered ciphertext fail closed.
     page.reload();expect(f.locator('#locked')).to_be_visible()
     wrong=json.loads(recovery.read_text());wrong['key']='A'*43+'='
-    expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files({'name':'wrong.json','mimeType':'application/json','buffer':json.dumps(wrong).encode()});expect(f.locator('#status')).to_contain_text('could not open your Personal book')
+    expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files({'name':'wrong.json','mimeType':'application/json','buffer':json.dumps(wrong).encode()});expect(f.locator('#status')).to_contain_text('could not open your book')
     expect(f.locator('#book')).to_be_hidden()
     page.evaluate('window.tamper=true');f.locator('#reload-vault').focus();f.locator('#reload-vault').press('Enter');f.locator('dialog').get_by_role('button',name='Continue',exact=True).click()
-    expect(f.locator('#locked')).to_be_visible();expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#status')).to_contain_text('could not open your Personal book');expect(f.locator('#book')).to_be_hidden()
+    expect(f.locator('#locked')).to_be_visible();expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#status')).to_contain_text('could not open your book');expect(f.locator('#book')).to_be_hidden()
     page.evaluate('window.tamper=false');f.locator('#reload-vault').focus();f.locator('#reload-vault').press('Enter');f.locator('dialog').get_by_role('button',name='Continue',exact=True).click()
     expect(f.locator('#unlock')).to_be_enabled();f.locator('#unlock').set_input_files(str(recovery));expect(f.locator('#entries')).to_contain_text('PRIVATE_BODY_CANARY')
     actual=page.frames[1]
@@ -203,8 +204,9 @@ with tempfile.TemporaryDirectory(prefix='passport-hosted-') as tmp, ThreadingHTT
     allowed={'/host','/hosted.html','/style.css','/entry.mjs','/hosted.mjs','/hosted-bridge.mjs',
       '/client-policy.mjs','/device-memory.mjs','/device-lock-channel.mjs','/vault.mjs','/answers.mjs',
       '/question-channel.mjs','/question-answer.mjs','/question-batch-channel.mjs','/question-batch.mjs',
-      '/topic-catalog.mjs','/topic-editor.mjs','/item-selection.mjs','/item-share-channel.mjs','/item-picker.mjs'}
+      '/topic-catalog.mjs','/topic-editor.mjs','/item-selection.mjs','/item-share-channel.mjs','/item-picker.mjs',
+      '/book-lock.css','/code-lock.mjs','/code-entry.mjs','/book-merge.mjs'}
     assert all(method=='GET' and url.removeprefix(base) in allowed for method,url in requests if not url.startswith('https://example.invalid')),requests
     assert all(secret not in json.dumps(page.evaluate("Object.values(localStorage)")) for secret in secrets)
-    print('PASS hosted: opaque sandbox, recovery-before-create, encrypted persistence, notes/files/answers/reuse, selected export, conflict/failure draft retention, scope consent+clearing, explicit two-gesture restore, wrong/mismatched recovery, replacement/delete cancellation, restore CAS and cleanup, delete isolation, reload/recovery, tamper/wrong-key rejection, ciphertext-only bridge/storage, CSP network block, mobile layout, no unexpected requests or page errors')
+    print('PASS hosted one book: opaque sandbox, recovery-before-create without a code door, encrypted persistence, notes/files/answers/reuse, selected export, conflict/failure draft retention, lock clearing, no book switcher, explicit two-gesture restore, wrong/mismatched recovery, replacement/delete cancellation, restore CAS and cleanup, delete then restore, reload/recovery, tamper/wrong-key rejection, ciphertext-only bridge/storage, no Business writes, CSP network block, mobile layout, no unexpected requests or page errors')
     browser.close();server.shutdown()

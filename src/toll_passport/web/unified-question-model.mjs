@@ -129,10 +129,17 @@ export function fallbackLabels(requestType) {
   return {book: kind === 'organization' ? 'business' : 'personal',
     topic: topicDescriptor(requestType) ? requestType : null};
 }
-export function passportLabel(fields, labels = fields?.labels) {
+export function passportLabel(fields, labels = null) {
   return topicDescriptor(labels?.topic)?.label ||
     topicDescriptor(fields?.classification?.requestType)?.label ||
     (typeof fields?.question === 'string' && fields.question.trim() ? fields.question.trim() : 'Saved answer');
+}
+/** The tag an answer came from (Steven 2026-10-27: "source can be the tag it came
+ *  from"): its book label, Personal or Business, then its topic when it has one. */
+export function sourceTag(fields, labels = null) {
+  const book = labels?.book === 'business' ? 'Business' : 'Personal';
+  const topic = topicDescriptor(labels?.topic)?.label || topicDescriptor(fields?.classification?.requestType)?.label;
+  return topic ? `${book} · ${topic}` : book;
 }
 /** Every saved answer in the book that fits this question's own kind, newest first, one per value. */
 export function savedAnswers(document, context, q) {
@@ -153,8 +160,8 @@ export function savedAnswers(document, context, q) {
     if (seen.has(key)) continue;
     seen.add(key);
     const question = typeof f.question === 'string' && f.question ? f.question : v.title;
-    out.push({id: e.id, value: structuredClone(value), question, label: passportLabel(f, v.labels || f.labels),
-      text: `${question}\n${answerText(q, value)}`, createdAt: v.createdAt});
+    out.push({id: e.id, value: structuredClone(value), question, label: passportLabel(f, v.labels),
+      tag: sourceTag(f, v.labels), text: `${question}\n${answerText(q, value)}`, createdAt: v.createdAt});
   }
   return out;
 }
@@ -180,11 +187,7 @@ export function answerEntry(context, q, value, labels) {
     label: q.label || '', questionDigest: q.digest, answerFormat: q.format, answerOptions: q.options},
     tags: q.label ? [q.label] : [], labels: safe};
 }
-/** A book without version labels keeps them in the fields instead. */
+/** Saves one answer; its labels ride the new version (vault.mjs addEntry). */
 export function addAnswer(document, entry) {
-  try { return addEntry(document, entry); } catch (error) {
-    const {labels, ...rest} = entry;
-    if (!labels) throw error;
-    return addEntry(document, {...rest, fields: {...rest.fields, labels}});
-  }
+  return addEntry(document, entry);
 }

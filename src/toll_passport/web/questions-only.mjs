@@ -101,41 +101,66 @@ else {
     input.addEventListener('input',()=>{input.value=input.value.replace(/\D/g,'').slice(0,6);});
     label.append(input);return [label,input];
   }
+  // Every refusal the book session can give, in plain words.
+  const RECOVERY_SAYS={
+    'invalid-file':'That is not a Passport recovery key. Choose the recovery key you downloaded.',
+    'backup-file':'That is an encrypted backup, not the recovery key. Choose the recovery key file.',
+    'wrong-book':'That recovery key is for a different Passport. Choose the one for this Passport.',
+    'failed':'That recovery key did not open your Passport. Choose the one you downloaded for it.',
+    'open-book-first':'That key is for your older Business book. First open your Passport with your code or its own recovery key.'};
+  const thrown=error=>error?.message==='unavailable'?'Passport is being updated. Try again in a minute.':
+    error?.message==='unauthorized'?'Your sign-in ended. Sign in again, then open Passport.':
+    error?.message==='conflict'?'Your Passport changed while opening. Try again.':'That did not work. Nothing changed. Try again.';
   function recoveryPicker(after) {
-    const pick=button('Choose recovery file','gray'),file=el('input');file.type='file';file.hidden=true;
-    file.dataset.recoveryFile='';
+    const pick=button('Choose recovery key','gray'),file=el('input');file.type='file';file.hidden=true;
+    file.accept='.json,application/json';file.dataset.recoveryFile='';
     pick.addEventListener('click',()=>file.click());
     file.addEventListener('change',async()=>{
       const chosen=file.files[0];file.value='';if(!chosen)return;
       pick.disabled=true;say('Opening your Passport…');
-      try {await session.unlockWithRecoveryFile(chosen);say('');await after();}
-      catch {say('That file did not open your Passport. Choose the recovery key you downloaded.');}
-      finally {pick.disabled=false;}
+      let result=null,failure=null;
+      try {result=await session.unlockWithRecoveryFile(chosen);} catch(error) {failure=error;}
+      pick.disabled=false;
+      if (!result) {say(thrown(failure));return;}
+      if (!result.ok) {
+        if (result.reason==='no-book') {stepSetup();say('There is no Passport here yet. Set one up first.');return;}
+        say(RECOVERY_SAYS[result.reason]||'That file did not open your Passport. Choose the recovery key you downloaded.');return;
+      }
+      say('');
+      if (result.merged) {await opened('Your Business book moved in.');return;}
+      await after(result);
     });
     return [pick,file];
+  }
+  // Which step the pop-up shows comes from the book's own code status.
+  async function route(note='') {
+    show(el('p','Opening your Passport…','muted'));
+    let status=null,failure=null;
+    try {status=await session.codeStatus();} catch(error) {failure=error;}
+    if (!mini.open) return;
+    if (connected()) {closeMini();return;}
+    if (!status) {show(el('p',thrown(failure)));return;}
+    if (!status.hasBook) stepSetup();
+    else if (status.disabled) stepRecovery('Too many tries. Open with your recovery key.');
+    else if (!status.codeSet) stepFirstOpen();
+    else stepCode();
+    if (note) say(note);
   }
   async function openMini() {
     if (mini.open) return;
     show(el('p','Opening your Passport…','muted'));mini.showModal();
-    let status=null;
-    try {if (typeof session.codeStatus==='function') status=await session.codeStatus();} catch { /* shown below */ }
-    if (!mini.open) return;
-    if (connected()) {closeMini();return;}
-    if (!status) {show(el('p','Passport is being updated. Try again in a minute.'));return;}
-    if (!status.hasBook) stepSetup();
-    else if (status.disabled) stepRecovery('Too many tries. Open with your recovery file.');
-    else if (!status.codeSet) stepFirstOpen();
-    else stepCode();
+    await route();
   }
-  async function opened() {
+  async function opened(note='') {
     if (!connected()) await session.load(BOOK).catch(()=>{});
     if (!connected()) {say('Passport did not open. Try again.');return;}
     closeMini();
+    if (note) feedback.textContent=note;
   }
   function stepCode() {
     const form=el('div',undefined,'mini-passport__form'),[label,input]=codeField('Your 6-digit code'),go=button('Open Passport','go');
-    const forgot=button('Forgot your code? Use your recovery file','secondary');
-    forgot.addEventListener('click',()=>stepRecovery('Open with your recovery file. Then pick a new code.'));
+    const forgot=button('Forgot your code? Use your recovery key','secondary');
+    forgot.addEventListener('click',()=>stepRecovery('Open with your recovery key. Then pick a new code.',true));
     form.append(el('p','Type your 6-digit code to open your Passport here.'),label,go,forgot);
     onSubmit(go,[input],async()=>{
       if (!/^\d{6}$/.test(input.value)) {say('Type all 6 digits.');return;}
@@ -144,50 +169,67 @@ else {
         const result=await session.unlockWithCode(input.value);input.value='';
         if (result?.ok) {await opened();return;}
         const left=result?.attemptsLeft;
-        if (result?.reason==='disabled'||left===0) stepRecovery('Too many tries. Open with your recovery file.');
+        if (result?.reason==='rate') say('Too many tries. Wait a minute.');
+        else if (result?.reason==='disabled') stepRecovery('Too many tries. Open with your recovery key.');
         else if (result?.reason==='no-book') stepSetup();
         else if (result?.reason==='no-code') stepFirstOpen();
         else say(Number.isInteger(left)?`Wrong code. ${left} ${left===1?'try':'tries'} left.`:'Wrong code.');
-      } catch {say('Passport did not open. Try again.');}
+      } catch(error) {say(error?.message==='unavailable'||error?.message==='unauthorized'||error?.message==='conflict'?
+        thrown(error):'Passport did not open. Try again.');}
       finally {go.disabled=false;if(mini.open&&input.isConnected)input.focus();}
     });
     show(form);input.focus();
   }
-  function stepRecovery(text) {
-    show(el('p',text),...recoveryPicker(async()=>stepPickCode('Pick a new 6-digit code.')));
+  // After a recovery key opens the book: pick a code when the book has none
+  // that fits (or it was turned off), or when the person forgot it.
+  function stepRecovery(text,newCode=false) {
+    show(el('p',text),...recoveryPicker(async result=>{
+      if (result.needsCode) stepPickCode('Pick a 6-digit code.');
+      else if (newCode) stepPickCode('Pick a new 6-digit code.');
+      else await opened();
+    }));
   }
   function stepFirstOpen() {
-    const nodes=[el('p','Open your Passport on this device. Then pick a 6-digit code.')];
-    if (device) {
-      const unlock=button('Unlock this device','gray');
-      unlock.addEventListener('click',async()=>{
-        unlock.disabled=true;
-        try {await session.unlockDevice();if(connected())stepPickCode('Pick a 6-digit code.');else say('This device could not open your Passport. Use your recovery file.');}
-        catch {say('This device could not open your Passport. Use your recovery file.');}
-        finally {unlock.disabled=false;}
-      });
-      nodes.push(unlock);
-    }
-    show(...nodes,...recoveryPicker(async()=>stepPickCode('Pick a 6-digit code.')));
+    show(el('p','Open your Passport with your recovery key once. Then pick a 6-digit code.'),
+      ...recoveryPicker(async()=>stepPickCode('Pick a 6-digit code.')));
   }
-  function pickCodeForm(text,action,submit) {
+  function pickCodeForm(text,action,submit,later=null) {
     const form=el('div',undefined,'mini-passport__form'),[first,code]=codeField('Pick a 6-digit code'),[second,again]=codeField('Type it again');
     const go=button(action,'go');form.append(el('p',text),first,second,go);
+    if (later) {const skip=button('Not now','secondary');skip.addEventListener('click',later);form.append(skip);}
     onSubmit(go,[code,again],async()=>{
       if (!/^\d{6}$/.test(code.value)) {say('Use 6 digits.');return;}
       if (code.value!==again.value) {say('The two codes do not match.');again.value='';again.focus();return;}
       go.disabled=true;say('');
-      try {await submit(code.value);} catch {say('That did not work. Nothing changed. Try again.');}
+      try {const problem=await submit(code.value);if(problem)say(problem);}
+      catch(error) {say(thrown(error));}
       finally {go.disabled=false;}
     });
     show(form);code.focus();
   }
   function stepPickCode(text) {
-    pickCodeForm(text,'Save code',async code=>{await session.setCode(code);await opened();});
+    // The book is already open here; "Not now" keeps it open without a code.
+    pickCodeForm(text,'Save code',async code=>{
+      let result;
+      try {result=await session.setCode(code);}
+      catch(error) {
+        if (error?.message==='unavailable'&&connected()) return 'The code could not be saved right now. Your Passport is open. Tap Not now and pick a code next time.';
+        throw error;
+      }
+      if (result?.ok) {await opened();return '';}
+      if (result?.reason==='locked') {await route('Your Passport locked before the code was saved. Open it again.');return '';}
+      return result?.reason==='invalid'?'Use 6 digits.':'That did not work. Nothing changed. Try again.';
+    },()=>void opened());
   }
   function stepSetup() {
     pickCodeForm('Set up your Passport. Pick a 6-digit code you will type to open it here.','Set up Passport',async code=>{
-      const made=await session.createBook(code);
+      let made;
+      try {made=await session.createBook(code);}
+      catch(error) {
+        if (error?.message==='exists') {await route('You already have a Passport. Open it with your code.');return '';}
+        if (error?.message==='invalid') return 'Use 6 digits.';
+        throw error;
+      }
       const download=button('Download recovery key','gray');download.dataset.recoveryDownload='';
       download.addEventListener('click',()=>{
         const url=URL.createObjectURL(made.recoveryFile),a=el('a');a.href=url;a.download=made.filename||'passport-recovery.json';
@@ -195,6 +237,7 @@ else {
       });
       const done=button('Done');done.addEventListener('click',()=>void opened());
       show(el('p','Your Passport is ready. Download your recovery key and keep it safe. It is the only way back in if you forget your code.'),download,done);
+      return '';
     });
   }
   connect.addEventListener('click',()=>void openMini());
@@ -219,9 +262,9 @@ else {
     row.suggestions.append(el('strong','From your Passport'));
     for (const hit of hits) {
       const item=el('div',undefined,'question-suggestion'),use=button('Use answer','secondary');
-      item.append(el('small',`Saved answer · ${hit.label}`,'question-source'),el('p',answerText(row.q,hit.value)),use);
+      item.append(el('small',`Saved answer · ${hit.tag}`,'question-source'),el('p',answerText(row.q,hit.value)),use);
       use.addEventListener('click',()=>{
-        setValue(row,hit.value);row.edited=true;row.source={id:hit.id,label:hit.label};
+        setValue(row,hit.value);row.edited=true;row.source={id:hit.id,tag:hit.tag};
         changedRow(row);void renderSuggestions(row);
       });
       row.suggestions.append(item);
@@ -245,7 +288,8 @@ else {
   function renderRow(row) {
     const on=connected();
     row.saveBox.checked=on&&row.save!==false;
-    row.from.hidden=!row.source;row.from.textContent=row.source?`From your Passport · ${row.source.label}`:'';
+    // The source is the tag the answer came from: its book label, then its topic.
+    row.from.hidden=!row.source;row.from.textContent=row.source?`From your Passport · ${row.source.tag}`:'';
   }
   const fileCount=()=>rows.reduce((n,row)=>n+row.files.length,0);
   function buildRow(q) {
