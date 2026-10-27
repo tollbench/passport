@@ -8,3 +8,10 @@ Passport is an independent information-vault component. Toll Bench's
 marketplace, contact-management workflows, lists, goals, action packs,
 agent operations, payment systems and reputation implementation are not
 included in this distribution or licensed by this project's license.
+
+This product includes the potion-base-8M static embedding model
+(weights and vocabulary, converted) by The Minish Lab
+(https://huggingface.co/minishlab/potion-base-8M), licensed under the
+MIT License, and icon artwork from Phosphor Icons
+(https://phosphoricons.com), licensed under the MIT License,
+Copyright (c) 2023 Phosphor Icons. See THIRD_PARTY_NOTICES.md.
