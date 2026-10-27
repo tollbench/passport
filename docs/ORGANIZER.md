@@ -79,7 +79,9 @@ organizer.label(text);                              // -> { book: 'personal' | '
 Load lazily: call `createOrganizer()` the first time the sheet needs it, not on
 page start. Measured in Node 22 on the staging box: importing the data modules
 about 130 to 170 ms, decoding about 85 to 155 ms, ranking 50 saved answers about
-7 to 25 ms the first time and under 1 ms once their vectors are cached.
+7 to 25 ms the first time and under 1 ms once their vectors are cached. In Chromium 145, served
+under the hosted CSP from a local origin: about 290 ms to load the model and 6 ms
+to rank 50.
 
 ## The sealed box
 
