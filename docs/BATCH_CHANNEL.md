@@ -104,3 +104,22 @@ Private saved approval provenance includes the per-question audiences but is not
 released. Older clients reject the extension; hosts must check the capability
 marker before enabling it. Storage, encryption and single-question protocols are
 unchanged.
+
+## Optional sheet extension (a18)
+
+`BATCH_SHEET_VERSION = 1` adds additive messages; hosts and editors that do not
+use them are unchanged. All carry `protocol,type,nonce,capability` of the open
+channel and are validated by exported functions.
+
+- Child `sheet {version:1}`: sent once by the questions-only sheet. A host that
+  saw it waits for `settled {id}` (the release message id) before it reloads the
+  page around the frame, because the sheet saves the checked answers to the book
+  after the receipt. Hosts should still proceed after a short timeout.
+- Host `autofill-offer`: shows **Autofill the rest**. Without it the sheet never
+  sends an autofill request.
+- Child `autofill-request {id,token,questions}`: only on the owner's tap. Each
+  question is `{id,title,format,options,answer}` with `answer` null when blank
+  or the current answer's display text. At most 64 questions.
+- Host `autofill-result {id,ok,drafted,answers:[{id,value}]}`: values must fit
+  the signed question; the sheet fills only questions still blank when it lands.
+  Nothing is saved or released by autofill.

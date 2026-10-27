@@ -27,6 +27,12 @@ not implement this channel continues to work as an ordinary book.
    answer/approval can ask the host to recover its existing receipt; the host
    must refuse a new expired write.
 
+In the questions-only view (a18) the same channel is answered from the one-sheet
+editor: Send releases first, then a checked **Save to my Passport** saves the
+answer to the one book; a failed save never blocks the release. Connecting
+happens in a mini Passport inside the frame (code, recovery file or set-up); the
+view never asks the host to open a tab.
+
 ## Contract and host responsibilities
 
 `question-channel.mjs` exports strict validators and `connectQuestionHost`.

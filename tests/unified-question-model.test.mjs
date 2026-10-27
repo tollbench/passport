@@ -129,3 +129,33 @@ test('company description suggestions name exact organizations before entity sel
   const invalid=[{...rows[0],topicChoice:'organization.unknown'},{...rows[1],value:''}];
   assert.deepEqual(propagateExact(ctx,invalid,invalid[0]),[]);
 });
+import {BOOK,bookSubject,savedAnswers,orderSuggestions,answerEntry,addAnswer,fallbackLabels,passportLabel,answerText} from '../src/toll_passport/web/unified-question-model.mjs';
+test('one book: every question saves to personal; business stays a label only',()=>{
+  assert.equal(BOOK,'personal');
+  assert.equal(bookSubject(context),'personal-subject');
+  assert.equal(bookSubject({...context,scope:'business',subject:'business-subject'}),'personal-subject');
+  assert.deepEqual(fallbackLabels('organization.description'),{book:'business',topic:'organization.description'});
+  assert.deepEqual(fallbackLabels(null),{book:'personal',topic:null});
+  const entry=answerEntry(context,{...q('one'),label:null},'Ada',{book:'business',topic:null});
+  assert.deepEqual(entry.labels,{book:'business'});
+  assert.equal(entry.fields.subject,'personal-subject');assert.equal(entry.fields.scope,'reusable');
+  assert(!Object.hasOwn(entry.fields,'bookScope'));
+});
+test('saved answers fit the question kind, newest first, deduped; exact wording leads the ranking',async()=>{
+  let doc=(await createVault()).document;
+  const save=(question,value,extra={})=>{doc=addAnswer(doc,answerEntry(context,{...q('x'),title:question,...extra},value,{book:'personal'}));};
+  save('What is your name?','Ada');save('Describe your company','Makes plans');save('What is your name?','Ada');
+  save('Pick',['red'],{format:'multiple_choice',options:[{value:'red',label:'Red'}]});
+  const text={...q('one'),title:'what is   your NAME?'};
+  const all=savedAnswers(doc,context,text);
+  assert.deepEqual(all.map(c=>c.value).sort(),['Ada','Makes plans']);
+  assert.deepEqual(orderSuggestions(text,all).map(c=>c.value),['Ada']);
+  const ada=all.find(c=>c.value==='Ada'),plans=all.find(c=>c.value==='Makes plans');
+  assert.deepEqual(orderSuggestions(text,all,[{id:plans.id,score:.4},{id:ada.id,score:.9}]).map(c=>c.value),['Ada','Makes plans']);
+  assert.deepEqual(orderSuggestions(text,all,[{id:plans.id,score:0}]).map(c=>c.value),['Ada']);
+  const choice={...q('c'),format:'multiple_choice',options:[{value:'red',label:'Red'}]};
+  assert.deepEqual(savedAnswers(doc,context,choice).map(c=>c.value),[['red']]);
+  assert.equal(answerText(choice,['red']),'Red');
+  assert.deepEqual(savedAnswers(doc,{...context,subject:'other',bookSubjects:{personal:'other',business:'other2'}},text),[]);
+  assert.equal(passportLabel({question:'Q'},{topic:'project.description'}),'Project description');
+});

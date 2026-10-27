@@ -108,13 +108,44 @@ export function validateBatchDraft(v, context) {
     return !!q&&(a.value===''||q.format==='multiple_choice'&&Array.isArray(a.value)&&!a.value.length||validValue(q,a.value));
   });
 }
+// Sheet extension (a18, optional and additive; older hosts ignore it). The
+// questions sheet announces itself once; a host that saw the announcement
+// waits for `settled` (the sheet finished saving to the book after a Send)
+// before it reloads the page around it. Autofill is offered by the host and
+// leaves the sheet only on the owner's own tap.
+export const BATCH_SHEET_VERSION = 1;
+export const AUTOFILL_TIMEOUT = 95000;
+const bare = v => v?.protocol === BATCH_PROTOCOL && uuid(v.nonce) && cap(v.capability);
+const shortValue = v => typeof v === 'string' && v.length <= 2000 ||
+  Array.isArray(v) && v.length <= 50 && v.every(x => typeof x === 'string' && x.length <= 100);
+const askOption = o => exact(o, ['value', 'label']) && text(o.value, 100) && text(o.label, 200);
+export const validateBatchSheet = v => exact(v, ['protocol', 'type', 'nonce', 'capability', 'version']) &&
+  bare(v) && v.type === 'sheet' && v.version === BATCH_SHEET_VERSION;
+export const validateBatchSettled = v => exact(v, ['protocol', 'type', 'nonce', 'capability', 'id']) &&
+  base(v) && v.type === 'settled';
+export const validateAutofillOffer = v => exact(v, ['protocol', 'type', 'nonce', 'capability']) &&
+  bare(v) && v.type === 'autofill-offer';
+export const validateAutofillQuestions = questions => Array.isArray(questions) && questions.length >= 1 &&
+  questions.length <= 64 && new Set(questions.map(q => q?.id)).size === questions.length &&
+  questions.every(q => exact(q, ['id', 'title', 'format', 'options', 'answer']) && text(q.id, 100) &&
+    text(q.title, 500) && formats.has(q.format) && Array.isArray(q.options) && q.options.length <= 50 &&
+    q.options.every(askOption) && (q.answer === null || shortValue(q.answer)));
+export const validateAutofillRequest = v => exact(v, ['protocol', 'type', 'nonce', 'capability', 'id', 'token', 'questions']) &&
+  base(v) && v.type === 'autofill-request' && text(v.token, 32768) && validateAutofillQuestions(v.questions);
+export const validateAutofillAnswers = answers => Array.isArray(answers) && answers.length <= 64 &&
+  answers.every(a => exact(a, ['id', 'value']) && text(a.id, 100) && shortValue(a.value));
+export const validateAutofillResult = v => exact(v, ['protocol', 'type', 'nonce', 'capability', 'id', 'ok', 'drafted', 'answers']) &&
+  base(v) && v.type === 'autofill-result' && typeof v.ok === 'boolean' && typeof v.drafted === 'boolean' &&
+  validateAutofillAnswers(v.answers);
 export function connectBatchHost(win = window, { timeout = 10000, releaseTimeout = 30000,
-  expectedOrigins = [] } = {}) {
+  autofillTimeout = AUTOFILL_TIMEOUT, expectedOrigins = [] } = {}) {
   return new Promise(resolve => {
     if (win.parent === win) { resolve(null); return; }
     const nonce = crypto.randomUUID(), pending = new Map(), attempted = new Map();
-    let origin, capability, context, closed = false, draftHandler=null, draftGeneration=0;
-    const close = () => { closed = true; clearTimeout(timer); win.removeEventListener('message', receive); for (const p of pending.values()) { clearTimeout(p.timer); p.reject(Error('unavailable')); } pending.clear(); };
+    let origin, capability, context, closed = false, draftHandler=null, draftGeneration=0, offered=false, offerHandler=null;
+    const fills = new Map();
+    const close = () => { closed = true; clearTimeout(timer); win.removeEventListener('message', receive); for (const p of [...pending.values(), ...fills.values()]) { clearTimeout(p.timer); p.reject(Error('unavailable')); } pending.clear(); fills.clear(); };
+    const post = message => { if (!closed) win.parent.postMessage(message, origin); };
     const receive = event => {
       if (closed || event.source !== win.parent) return;
       const v = event.data;
@@ -123,7 +154,17 @@ export function connectBatchHost(win = window, { timeout = 10000, releaseTimeout
             expectedOrigins.length && !expectedOrigins.includes(event.origin)) return;
         origin = event.origin; capability = v.capability; context = v.context; clearTimeout(timer);
         if (!context) { close(); resolve(null); return; }
-        resolve({context, close, setDraftHandler(handler) { draftHandler=handler; }, release(answers, approvalId) {
+        resolve({context, close, setDraftHandler(handler) { draftHandler=handler; },
+          announceSheet() { post({protocol:BATCH_PROTOCOL,type:'sheet',nonce,capability,version:BATCH_SHEET_VERSION}); },
+          settled(id) { if (uuid(id)) post({protocol:BATCH_PROTOCOL,type:'settled',nonce,capability,id}); },
+          setAutofillOfferHandler(handler) { offerHandler=handler; if (offered && handler) handler(); },
+          requestAutofill(questions) {
+            if (closed || !offered) return Promise.reject(Error('unavailable'));
+            const message={protocol:BATCH_PROTOCOL,type:'autofill-request',nonce,capability,id:crypto.randomUUID(),token:context.token,questions};
+            if (!validateAutofillRequest(message) || fills.size) return Promise.reject(Error('invalid'));
+            return new Promise((resolve,reject) => { const timer=setTimeout(()=>{fills.delete(message.id);reject(Error('unavailable'));},autofillTimeout); fills.set(message.id,{resolve,reject,timer}); post(message); });
+          },
+          release(answers, approvalId) {
           if (closed || !validateBatchAnswers(answers, context)) return Promise.reject(Error('invalid'));
           const signature = JSON.stringify(answers);
           if (Date.now() >= context.expiresAt && attempted.get(approvalId) !== signature) return Promise.reject(Error('expired'));
@@ -138,6 +179,14 @@ export function connectBatchHost(win = window, { timeout = 10000, releaseTimeout
         const ok=!!draftHandler&&draftHandler(v.answers)===true;
         win.parent.postMessage({protocol:BATCH_PROTOCOL,type:'draft-result',nonce,capability,id:v.id,ok},origin);
         return;
+      }
+      if (event.origin === origin && v?.nonce === nonce && v.capability === capability) {
+        if (validateAutofillOffer(v)) { if (!offered) { offered = true; offerHandler?.(); } return; }
+        if (validateAutofillResult(v)) {
+          const f = fills.get(v.id); if (!f) return; clearTimeout(f.timer); fills.delete(v.id);
+          const ids = new Set(context.questions.map(q => q.id));
+          f.resolve({ok: v.ok, drafted: v.drafted, answers: v.answers.filter(a => ids.has(a.id))}); return;
+        }
       }
       if (event.origin !== origin || !validateBatchReceipt(v) || v.nonce !== nonce || v.capability !== capability) return;
       const p=pending.get(v.id);if(!p)return;clearTimeout(p.timer);pending.delete(v.id);v.ok?p.resolve(v):p.reject(Error(v.error));

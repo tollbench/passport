@@ -1,11 +1,18 @@
 # Deterministic question autofill
 
-The a16 dedicated questions-only view keeps edits in memory until the owner
-chooses **Save to Passport**. Its separate Review and Send action can release
-selected unsaved answers without saving them to the private book. The older
-matching-enabled book flow described below retains its own save contract.
+The questions-only sheet (a18, Steven 2026-10-27) shows each question with its
+answer, Attach files and one **Save to my Passport** box, checked when the
+book is open. **Send** releases the non-blank answers to the agents who asked
+them, then saves the checked answers into the one book (`personal`). A failed
+save never blocks or undoes the send and says so. Saved answers appear only as
+suggestions (**Use answer**); exact wording first, then the optional in-box
+organizer's ranking. A host may offer **Autofill the rest** (`autofill-offer`,
+see [BATCH_CHANNEL.md](BATCH_CHANNEL.md)); the questions and current answers
+leave the frame only on that tap, and the reply fills only boxes still blank.
+Autofill saves and sends nothing. The older matching-enabled book flow
+described below retains its own save contract.
 
-A host may supply a public requestType from the versioned catalog. No tag means no topic match. The client does not infer tags from prose, files, entity names, embeddings or model calls.
+A host may supply a public requestType from the versioned catalog. No tag means no topic match. The matching flow does not infer tags from prose, files, entity names, embeddings or model calls; the one-sheet organizer labels a saved answer as a sorting hint only, never as a permission.
 
 Inside the unlocked isolated client, one entity of the declared kind plus one compatible eligible saved fact fills an empty answer automatically. Multiple entities or competing facts require explicit choice. Manual edits and deliberate clearing prevent later automatic replacement. The source chip lists the original question, version and date, allows explicit source selection, and can clear the answer. A formerly automatic source is withdrawn when it becomes ambiguous or ineligible. An explicitly selected current source remains selected even if another fact exists.
 

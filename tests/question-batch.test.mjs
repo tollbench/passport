@@ -53,3 +53,25 @@ test('audience display disambiguates duplicate names without merging IDs',()=>{
   assert.equal(questionRecipients(q,c),'Same (a), Same (b)');
   assert.equal(questionRecipients(c.questions[0],c),'Test Agent');
 });
+import {validateBatchSheet,validateBatchSettled,validateAutofillOffer,validateAutofillRequest,validateAutofillResult} from '../src/toll_passport/web/question-batch-channel.mjs';
+test('sheet extension: announce, settle after save, autofill only after an offer and only on request',async()=>{
+  let handler;const sent=[],parent={postMessage:data=>sent.push(data)},win={parent,addEventListener:(_,f)=>handler=f,removeEventListener:()=>handler=null};
+  const pending=connectBatchHost(win,{timeout:100,autofillTimeout:200,expectedOrigins:['https://host.test']});
+  const c=context(),nonce=sent[0].nonce,capability='b'.repeat(64),emit=(data,over={})=>handler?.({source:parent,origin:'https://host.test',data,...over});
+  emit({protocol:BATCH_PROTOCOL,type:'init',nonce,capability,context:c});const channel=await pending;
+  channel.announceSheet();assert(validateBatchSheet(sent.at(-1)));
+  const id=crypto.randomUUID();channel.settled(id);assert(validateBatchSettled(sent.at(-1)));assert.equal(sent.at(-1).id,id);
+  const asked=[{id:'q1',title:'Founder bio?',format:'short_answer',options:[],answer:null}];
+  await assert.rejects(channel.requestAutofill(asked),/unavailable/);
+  let offered=0;channel.setAutofillOfferHandler(()=>offered++);
+  emit({protocol:BATCH_PROTOCOL,type:'autofill-offer',nonce,capability},{origin:'https://wrong.test'});assert.equal(offered,0);
+  emit({protocol:BATCH_PROTOCOL,type:'autofill-offer',nonce,capability});assert(validateAutofillOffer({protocol:BATCH_PROTOCOL,type:'autofill-offer',nonce,capability}));assert.equal(offered,1);
+  assert(!sent.some(m=>m.type==='autofill-request'));
+  const result=channel.requestAutofill(asked),request=sent.at(-1);
+  assert(validateAutofillRequest(request));assert.equal(request.token,c.token);
+  assert(!validateAutofillRequest({...request,questions:[{...asked[0],format:'contact_picker'}]}));
+  const reply={protocol:BATCH_PROTOCOL,type:'autofill-result',nonce,capability,id:request.id,ok:true,drafted:true,answers:[{id:'q1',value:'Bio'},{id:'zz',value:'x'}]};
+  assert(validateAutofillResult(reply));emit({...reply,capability:'c'.repeat(64)});emit(reply);
+  assert.deepEqual(await result,{ok:true,drafted:true,answers:[{id:'q1',value:'Bio'}]});
+  const late=channel.requestAutofill(asked);await assert.rejects(late,/unavailable/);channel.close();
+});
