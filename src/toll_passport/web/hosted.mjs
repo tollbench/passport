@@ -15,6 +15,10 @@ import { connectHost } from './hosted-bridge.mjs';
 import { ALLOWED_PARENT_ORIGINS } from './client-policy.mjs';
 import { createDeviceMemory, indexedDbDeviceStorage } from './device-memory.mjs';
 import { createOwnerLockChannel } from './device-lock-channel.mjs';
+import { BOOK_SCOPE, LEGACY_SCOPE, CODE_ATTEMPTS, readCodeStatus, unlockWithCode, setBookCode, codeFits,
+  readRecoveryFile } from './code-lock.mjs';
+import { mergeLegacyBook, hasMerged, isMergeMarker } from './book-merge.mjs';
+import { mountCodeEntry } from './code-entry.mjs';
 // A sandboxed opaque frame keeps the URL's origin in location.origin. The
 // serialized browsing-context origin is null, which preserves the legacy host.
 if (window.origin !== 'null' && !ALLOWED_PARENT_ORIGINS.length)
@@ -32,7 +36,10 @@ const $ = id => document.getElementById(id);
 let key, doc, envelope, host, device, lockSignal, scope, etag = null, pendingCreation, loaded = false, sharing, receivedEnvelope, receivedRecovery, busy = false,
   recoverySaved = false, loadFailed = false, pendingRestore = null, libraryKind = 'all',
   shareGeneration = 0, vaultGeneration = 0,
-  filledAnswer = null, renderedAnswerSignature = null;
+  filledAnswer = null, renderedAnswerSignature = null,
+  // One book: `scope` is only the label the host asked for; storage is always BOOK_SCOPE.
+  codeState = null, legacyEnvelope = null, backupNotice = false, codeSetupOpen = false, recoveryOpen = false,
+  createFirst = null, setupFirst = null, unlockEntry = null, createEntry = null, setupEntry = null;
 const MAX_FILE = 25 * 1024 * 1024,
   MAX_IMPORT = 145 * 1024 * 1024;
 
@@ -158,13 +165,15 @@ async function run(fn) {
   try {
     await fn();
   } catch (err) {
-    const book = scope === 'business' ? 'Business' : 'Personal';
     const unlockErrors = {
-      'unlock-file': `Choose a valid Passport recovery file for your ${book} book. Nothing was changed.`,
-      'unlock-backup': `This is an encrypted backup of your book. To open it, choose the recovery file downloaded when you created this ${book} book. Nothing was changed.`,
-      'unlock-wrong-book': `This recovery file belongs to a different book. Your ${book} book is still locked. Switch to the matching book or choose this book’s recovery file. Nothing was changed.`,
-      'unlock-failed': `This recovery file could not open your ${book} book. Its key may be wrong or the saved book may be damaged. Nothing was changed.`,
-      'unlock-changed': 'The selected book changed while opening. Choose its recovery file again. Nothing was changed.'
+      'unlock-file': 'Choose a valid Passport recovery file. Nothing was changed.',
+      'unlock-backup': 'This is an encrypted backup of your book, not its key. Choose the recovery file instead. Nothing was changed.',
+      'unlock-wrong-book': 'This recovery file belongs to a different book. Your book is still locked. Nothing was changed.',
+      'unlock-legacy': 'This is the recovery file for your older Business book. Open your book first, then move the Business book in.',
+      'merge-wrong-book': 'This recovery file is not for your older Business book. Nothing was changed.',
+      'unlock-failed': 'This recovery file could not open your book. Its key may be wrong or the saved book may be damaged. Nothing was changed.',
+      'unlock-changed': 'Your book changed while opening. Try again. Nothing was changed.',
+      'code-unavailable': 'Codes are not available right now. Your book is safe. Try again in a moment.'
     };
     status(unlockErrors[err.message] || (err.message === 'conflict' ?
       'Save not confirmed: this vault changed elsewhere. Your input is still here. Export a backup if needed, then reload the saved vault and unlock again.' :
@@ -182,10 +191,14 @@ async function run(fn) {
 }
 
 async function readSaved() {
-  return host.request('load', scope);
+  return host.request('load', BOOK_SCOPE);
+}
+async function readLegacy() {
+  if (!host.scopes.includes(LEGACY_SCOPE)) return null;
+  try { return (await host.request('load', LEGACY_SCOPE)).envelope; } catch { return null; }
 }
 async function persist(next) {
-  const result = await host.request(next ? 'save' : 'delete', scope,
+  const result = await host.request(next ? 'save' : 'delete', BOOK_SCOPE,
     next ? { envelope: next, expectedEtag: etag } : { expectedEtag: etag });
   etag = result.etag;
 }
@@ -196,7 +209,7 @@ async function save(next, expected = null) {
   const unchanged = () => key === before.key && doc === before.doc && scope === before.scope && etag === before.etag;
   const sealed = await sealVault(next, before.key);
   if (!unchanged()) throw Error('conflict');
-  const result = await host.request('save', before.scope, { envelope: sealed, expectedEtag: before.etag });
+  const result = await host.request('save', BOOK_SCOPE, { envelope: sealed, expectedEtag: before.etag });
   if (!unchanged()) throw Error('conflict');
   etag = result.etag; doc = next; envelope = sealed;
   clearTransient(); render();
@@ -252,7 +265,8 @@ function downloadFile(f) {
 }
 
 function libraryEntries() {
-  return (doc?.entries || []).filter(entry => ![...panels.values()].some(p => p.controller.ownsEntry?.(entry)));
+  return (doc?.entries || []).filter(entry => !isMergeMarker(entry) &&
+    ![...panels.values()].some(p => p.controller.ownsEntry?.(entry)));
 }
 function renderLibrary() {
   const list = $('entries');
@@ -265,7 +279,7 @@ function renderLibrary() {
   const matching = entries.filter(entry => {
     const v = entry.versions.at(-1);
     return (libraryKind === 'all' || libraryKind === kind(entry)) &&
-      (!search || [v.title, ...(v.tags || [])].some(text => text.toLocaleLowerCase().includes(search)));
+      (!search || [v.title, ...(v.tags || []), ...Object.values(v.labels || {})].some(text => text.toLocaleLowerCase().includes(search)));
   });
   $('library-results').textContent = entries.length ? `${matching.length} of ${entries.length} ${entries.length === 1 ? 'item' : 'items'}` : '';
   if (!entries.length) {
@@ -279,7 +293,9 @@ function renderLibrary() {
     const v = entry.versions.at(-1), card = node('article', undefined, 'record library-record'),
       details = node('details'), summary = node('summary'), body = node('div', undefined, 'record-body'),
       type = { file: 'File', answer: 'Saved answer', note: 'Note' }[kind(entry)];
-    summary.append(node('span', type, 'record-type'), node('strong', v.title, 'record-title'));
+    summary.append(node('span', type, 'record-type'));
+    if (v.labels?.book === 'business') summary.append(node('span', 'Business', 'record-label'));
+    summary.append(node('strong', v.title, 'record-title'));
     const preview = typeof v.fields.content === 'string' ? v.fields.content : typeof v.fields.answer === 'string' ? v.fields.answer : '';
     if (preview) summary.append(node('span', preview.replace(/\s+/g, ' ').slice(0, 120) + (preview.length > 120 ? '…' : ''), 'record-preview'));
     const tags = node('div', undefined, 'record-tags');
@@ -309,18 +325,55 @@ $('add-information').addEventListener('click', () => {
 function render() {
   questionPanel?.refresh(); batchPanel?.refresh(); itemPanel?.refresh(); refreshPanels();
   const unlocked = !!key, state = unlocked ? 'open' : pendingCreation ? 'recovery' : !loaded ? loadFailed ? 'error' : 'loading' : envelope ? 'locked' : 'empty';
+  const fits = codeFits(codeState, envelope), disabled = fits && !!codeState.disabled;
   document.body.dataset.bookState = state;
-  $('intro-heading').textContent = scope === 'business' ? 'Your business information.' : scope === 'personal' ? 'Your personal information.' : 'Your information.';
+  $('intro-heading').textContent = 'Your book.';
   $('intro-description').textContent = state === 'loading' ? 'Finding your saved book…' : state === 'error' ? host ? 'Your saved book could not be loaded. Choose Reload saved book to try again.' : 'The book connection is unavailable. Close this book and open it again, or refresh the page.' :
-    scope === 'business' ? 'Your company story, documents and saved answers, together in one private book.' : 'Your story, documents and saved answers, together in one private book.';
+    'Your story, your business, your files and saved answers, together in one private book.';
   $('welcome').hidden = state !== 'empty';
-  $('creation').hidden = state !== 'recovery';
-  $('reload-vault').hidden = !host || !!pendingCreation || state === 'loading';
+  const noDoor = state === 'empty' && !codeState;
+  $('create').hidden = !noDoor;
+  $('create-code').hidden = noDoor;
+  if (noDoor) $('welcome-text').textContent = 'Your browser creates a new encryption key for you. Save its recovery file; it opens your book.';
+  else if (!createFirst) $('welcome-text').textContent = legacyEnvelope ?
+    'Pick a 6-digit code to start your one book. Your older Business book can move in right after.' :
+    'Pick a 6-digit code. You will use it to open your book on any device where you are logged in.';
+  $('reload-vault').hidden = !host || state === 'loading';
   $('locked').hidden = state !== 'locked';
-  $('unlock-device').hidden = state !== 'locked' || !device || !host?.storageIdentity;
-  $('remember-device').hidden = !unlocked || !device || !host?.storageIdentity;
+  // Locked: the code is the way in; the recovery file is the backup.
+  const codeDoor = state === 'locked' && fits && !disabled && !recoveryOpen;
+  $('unlock-code').hidden = !codeDoor;
+  $('recovery-door').hidden = state !== 'locked' || codeDoor;
+  $('use-recovery').hidden = state !== 'locked' || !fits || disabled;
+  $('use-recovery').textContent = recoveryOpen ? 'Use my code instead' : 'Use recovery file';
+  const left = fits ? codeState.attemptsLeft : CODE_ATTEMPTS;
+  $('locked-heading').textContent = disabled ? 'Your code is turned off.' : codeDoor ? 'Enter your 6-digit code.' :
+    fits ? 'Open your book with its recovery file.' : 'Open your book with its recovery file.';
+  $('locked-text').textContent = disabled ? 'There were 10 wrong tries. Open your book with its recovery file, then pick a new code.' :
+    codeDoor ? (left < CODE_ATTEMPTS ? `Type the code you picked for your book. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Type the code you picked for your book.') :
+    fits ? 'Choose the recovery file you saved when you made your book.' :
+    codeState ? 'This one time, use the recovery file you saved. Then you can pick a 6-digit code.' :
+    'Use the recovery file you saved when you made your book.';
+  $('unlock-device').hidden = true;
+  $('remember-device').hidden = true;
   $('forget-device').hidden = !unlocked || !device || !host?.storageIdentity;
-  $('locked-heading').textContent = `Your ${scope === 'business' ? 'Business' : 'Personal'} book is locked.`;
+  // A host without the code door keeps the old order: save the key, then the first write.
+  $('creation').hidden = !(state === 'recovery' || unlocked && backupNotice);
+  $('creation-heading').textContent = state === 'recovery' ? 'Keep the key to your book.' : 'Your book is ready.';
+  $('creation-text').textContent = state === 'recovery' ?
+    'Your browser has offered a recovery file. Save it somewhere safe: it is the key you will use to open this book again. It cannot be reset for you.' :
+    'Your browser offered a recovery file. Keep it somewhere safe. If you ever forget your code, that file opens your book.';
+  $('confirm-create').textContent = state === 'recovery' ? 'I saved my key, open my book' : 'Done';
+  $('cancel-create').hidden = state !== 'recovery';
+  const needsCode = unlocked && !!codeState && (!fits || disabled);
+  $('code-setup').hidden = !(needsCode || unlocked && codeSetupOpen && !!codeState);
+  $('cancel-code-setup').hidden = needsCode;
+  $('code-setup-heading').textContent = needsCode && !disabled && !fits ? 'Pick a 6-digit code.' : 'Pick a new 6-digit code.';
+  $('code-setup-text').textContent = disabled ? 'Your old code was turned off. A new code works right away.' :
+    needsCode ? 'Next time, you open your book with this code instead of the file.' :
+    'Your old code stops working once the new one is set.';
+  $('change-code').hidden = !unlocked || !fits || disabled || codeSetupOpen;
+  $('legacy-merge').hidden = !unlocked || !legacyEnvelope || hasMerged(doc, legacyEnvelope.vaultId);
   $('book').hidden = !unlocked;
   $('book-intro').hidden = unlocked;
   $('book-map').hidden = unlocked || !loaded || !!pendingCreation;
@@ -334,41 +387,166 @@ function render() {
     $('share-fields').replaceChildren();
     return;
   }
-  $('usage').textContent = `${doc.entries.length} records · ${(envelope.ciphertext.length*3/4/1024/1024).toFixed(2)} MiB encrypted · Recovery file ${recoverySaved ? 'download requested' : 'needed for future unlocking'}`;
-  $('book-heading').textContent = scope === 'business' ? 'Your business book' : 'Your personal book';
+  $('usage').textContent = `${doc.entries.length} records · ${(envelope.ciphertext.length*3/4/1024/1024).toFixed(2)} MiB encrypted · Recovery file ${recoverySaved ? 'download requested' : 'kept as your backup'}`;
+  $('book-heading').textContent = 'Your book';
   const count = libraryEntries().length;
   $('book-count').textContent = count ? `${count} saved ${count === 1 ? 'item' : 'items'} · Only in your book until you share` : 'Your book is open. Add information to make it yours.';
   renderLibrary();
 }
-async function create() {
+// Stays open on this device until Lock, Forget or a new login (a new login nonce).
+async function keepOpen() {
+  if (!device || !host?.storageIdentity || !key || !doc || !codeState?.loginNonce) return;
+  try {
+    await device.unlockDevice(host.storageIdentity);
+    await device.remember(host.storageIdentity, BOOK_SCOPE, doc.vaultId, key, codeState.loginNonce);
+  } catch { /* Device storage is optional; the code still works next time. */ }
+}
+// Someone who used "Remember this device" for an older Business book moves it in silently.
+async function mergeFromDevice() {
+  if (!key || !legacyEnvelope || hasMerged(doc, legacyEnvelope.vaultId) || !device || !host?.storageIdentity) return;
+  try {
+    const opened = await device.restoreLegacy(host.storageIdentity, LEGACY_SCOPE, legacyEnvelope);
+    if (!opened || !key || hasMerged(doc, legacyEnvelope.vaultId)) return;
+    await save(mergeLegacyBook(doc, opened.document));
+    status('Your Business book moved in. Its items carry a Business label.');
+  } catch { /* The recovery file can still move it in. */ }
+}
+function opened(result, message = 'Your book is open.') {
+  key = result.key; doc = result.document;
+  recoveryOpen = false;
+  render(); status(message); revealBook();
+}
+const codeMessages = {
+  wrong: n => `That code is not right. ${n} ${n === 1 ? 'try' : 'tries'} left.${n <= 3 ? ' After that, you will need your recovery file.' : ''}`,
+  disabled: () => 'That was the 10th wrong try, so the code is turned off. Open your book with its recovery file, then pick a new code.',
+  rate: () => 'Too many tries in a row. Wait a minute, then try again.',
+  'no-code': () => 'This book has no code yet. Open it with its recovery file.',
+  'no-book': () => 'There is no saved book yet.'
+};
+async function tryCode(value) {
+  const pending = { envelope, generation: vaultGeneration };
+  $('unlock-feedback').textContent = 'Checking your code…';
+  unlockEntry.setDisabled(true);
+  try {
+    const fresh = await readCodeStatus(host);
+    if (!fresh) throw Error('code-unavailable');
+    codeState = fresh;
+    const result = await unlockWithCode(host, pending.envelope, value, fresh);
+    if (vaultGeneration !== pending.generation || envelope !== pending.envelope) throw Error('unlock-changed');
+    unlockEntry.clear();
+    if (!result.ok) {
+      if (result.reason === 'wrong' || result.reason === 'disabled')
+        codeState = { ...codeState, attemptsLeft: result.attemptsLeft, disabled: codeState.disabled || result.reason === 'disabled' };
+      $('unlock-feedback').textContent = (codeMessages[result.reason] || codeMessages.wrong)(result.attemptsLeft);
+      render(); unlockEntry.shake();
+      return;
+    }
+    $('unlock-feedback').textContent = '';
+    codeState = { ...codeState, attemptsLeft: CODE_ATTEMPTS, disabled: false };
+    opened(result);
+    await keepOpen();
+    await mergeFromDevice();
+  } finally { unlockEntry.setDisabled(false); if (!key) unlockEntry.focus(); }
+}
+async function createStep(value) {
+  if (!createFirst) {
+    createFirst = value; createEntry.clear();
+    $('welcome-heading').textContent = 'Enter it again.';
+    $('create-feedback').textContent = 'Type the same 6 digits again so we know you have it.';
+    $('create-restart').hidden = false; createEntry.focus(); return;
+  }
+  const first = createFirst;
+  createFirst = null; createEntry.clear();
+  $('welcome-heading').textContent = 'Start your book.'; $('create-restart').hidden = true;
+  if (value !== first) {
+    $('create-feedback').textContent = 'Those codes did not match. Pick a 6-digit code again.';
+    createEntry.shake(); createEntry.focus(); return;
+  }
+  await create(value);
+}
+async function setupStep(value) {
+  if (!setupFirst) {
+    setupFirst = value; setupEntry.clear();
+    $('setup-feedback').textContent = 'Enter the same code again.';
+    setupEntry.focus(); return;
+  }
+  const first = setupFirst;
+  setupFirst = null; setupEntry.clear();
+  if (value !== first) {
+    $('setup-feedback').textContent = 'Those codes did not match. Pick a 6-digit code again.';
+    setupEntry.shake(); setupEntry.focus(); return;
+  }
+  const generation = vaultGeneration;
+  $('setup-feedback').textContent = 'Saving your code…';
+  const result = await setBookCode(host, key, doc?.vaultId, value);
+  if (generation !== vaultGeneration) throw Error('conflict');
+  if (!result.ok) { $('setup-feedback').textContent = 'Your code could not be set. Try again.'; return; }
+  codeState = result.status; codeSetupOpen = false;
+  $('setup-feedback').textContent = '';
+  await keepOpen();
+  render(); status('Your code is set. Use it next time you open your book.');
+}
+async function create(value) {
   if (!loaded) throw Error('unavailable');
-  if (envelope || pendingCreation) throw Error('Already exists');
+  if (envelope) throw Error('Already exists');
   clearRestore();
-  pendingCreation = await createVault();
-  render();
-  await creationRecovery();
+  const generation = vaultGeneration;
+  $('create-feedback').textContent = 'Making your book…';
+  const created = await createVault();
+  // The code is stored first, so a failed save never leaves a book nobody can open.
+  const set = await setBookCode(host, created.key, created.document.vaultId, value);
+  if (!set.ok) throw Error('code-unavailable');
+  if (generation !== vaultGeneration) throw Error('conflict');
+  await persist(created.envelope);
+  if (generation !== vaultGeneration) throw Error('conflict');
+  envelope = created.envelope; codeState = set.status; backupNotice = true;
+  $('create-feedback').textContent = '';
+  download(await exportRecovery(created.key, created.document.vaultId), 'passport-recovery.json');
+  recoverySaved = true;
+  opened(created, 'Your book is ready. Save the recovery file your browser offered as a backup.');
   $('creation-heading').focus({ preventScroll: true });
-  $('creation-heading').scrollIntoView({ block: 'start', behavior: 'instant' });
+  await keepOpen();
+  await mergeFromDevice();
 }
-async function creationRecovery() {
-  download(await exportRecovery(pendingCreation.key, pendingCreation.document.vaultId), `passport-${scope}-recovery.json`);
+$('retry-recovery').addEventListener('click', () => run(async () => {
+  if (!pendingCreation) return recovery();
+  download(await exportRecovery(pendingCreation.key, pendingCreation.document.vaultId), 'passport-recovery.json');
   status('Recovery download requested. Confirm you saved it before the first hosted write.');
-}
-$('retry-recovery').addEventListener('click', () => run(creationRecovery));
+}));
+$('confirm-create').addEventListener('click', () => run(async () => {
+  if (!pendingCreation) { backupNotice = false; render(); revealBook(); return; }
+  const generation = vaultGeneration, creation = pendingCreation;
+  await persist(creation.envelope);
+  if (generation !== vaultGeneration || creation !== pendingCreation) throw Error('conflict');
+  envelope = creation.envelope; pendingCreation = null; recoverySaved = true;
+  opened(creation, 'Passport created. Only its encrypted snapshot was saved to the host.');
+}));
 $('cancel-create').addEventListener('click', () => run(() => {
   pendingCreation = null; clearTransient(); render(); status('Creation canceled. No save was requested by canceling.');
 }));
-$('confirm-create').addEventListener('click', () => run(async () => {
-  const generation=vaultGeneration, creation=pendingCreation;
-  await persist(pendingCreation.envelope);
-  if (generation!==vaultGeneration || creation!==pendingCreation) throw Error('conflict');
-  key = pendingCreation.key; doc = pendingCreation.document; envelope = pendingCreation.envelope;
-  pendingCreation = null; recoverySaved = true;
-  render(); status('Passport created. Only its encrypted snapshot was saved to the host.');
-  revealBook();
+// A host without the code door still gets a book, opened by its recovery file.
+$('create').addEventListener('click', () => run(async () => {
+  if (!loaded || envelope || pendingCreation) throw Error('unavailable');
+  clearRestore();
+  pendingCreation = await createVault();
+  download(await exportRecovery(pendingCreation.key, pendingCreation.document.vaultId), 'passport-recovery.json');
+  render();
+  status('Recovery download requested. Confirm you saved it before the first hosted write.');
+  $('creation-heading').focus({ preventScroll: true });
+  $('creation').scrollIntoView({ block: 'start', behavior: 'instant' });
 }));
+$('create-restart').addEventListener('click', () => {
+  createFirst = null; createEntry.clear(); $('create-restart').hidden = true;
+  $('welcome-heading').textContent = 'Start your book.'; $('create-feedback').textContent = ''; createEntry.focus();
+});
+$('use-recovery').addEventListener('click', () => { recoveryOpen = !recoveryOpen; render(); if (!recoveryOpen) unlockEntry.focus(); });
+$('change-code').addEventListener('click', () => {
+  codeSetupOpen = true; setupFirst = null; setupEntry.clear(); $('setup-feedback').textContent = ''; render();
+  $('code-setup-heading').focus({ preventScroll: true }); $('code-setup').scrollIntoView({ block: 'start', behavior: 'instant' });
+});
+$('cancel-code-setup').addEventListener('click', () => { codeSetupOpen = false; setupFirst = null; setupEntry.clear(); render(); });
 async function recovery() {
-  download(await exportRecovery(key, doc.vaultId), `passport-${scope}-recovery.json`);
+  download(await exportRecovery(key, doc.vaultId), 'passport-recovery.json');
   recoverySaved = true;
   render();
   status(
@@ -385,8 +563,11 @@ function lock() {
   receivedRecovery = null;
   document.querySelectorAll('form').forEach(f => f.reset());
   document.querySelectorAll('input[type=file]').forEach(f => f.value = '');
+  codeSetupOpen = false; setupFirst = null; backupNotice = false; recoveryOpen = false;
+  setupEntry?.clear(); unlockEntry?.clear();
   render();
-  status('Locked. Choose the recovery file to unlock again.');
+  status(codeFits(codeState, envelope) && !codeState.disabled ? 'Your book is locked. Enter your code to open it.' :
+    'Your book is locked. Use its recovery file to open it.');
 }
 async function lockEverywhere() {
   lock();
@@ -429,7 +610,7 @@ $('restore-recovery').addEventListener('change', event => run(async () => {
     clearRestore(); status('Restore canceled. Your saved book has not changed.'); return;
   }
   if (!unchanged()) throw Error('conflict');
-  const result = await host.request('save', pending.scope, { envelope: pending.candidate, expectedEtag: pending.etag });
+  const result = await host.request('save', BOOK_SCOPE, { envelope: pending.candidate, expectedEtag: pending.etag });
   if (!unchanged()) throw Error('conflict');
   etag = result.etag;
   envelope = pending.candidate;
@@ -468,26 +649,25 @@ function startShare(id, v) {
     behavior: 'instant'
   });
 }
-$('create').addEventListener('click', () => run(create));
 $('recovery').addEventListener('click', () => run(recovery));
 $('backup').addEventListener('click', () => run(() => download(envelope,
-  `passport-${scope}-encrypted-backup.json`)));
+  'passport-encrypted-backup.json')));
 $('lock').addEventListener('click', () => run(async () => {
-  if (!recoverySaved && !await ask(
-      'Without a recovery file you cannot unlock this vault. Lock anyway?')) return;
+  if (!recoverySaved && !codeFits(codeState, envelope) && !await ask(
+      'You have no code and no saved recovery file yet. If you lock now, you may not get back in. Lock anyway?')) return;
   await lockEverywhere();
 }));
 $('remember-device').addEventListener('click',()=>run(async()=>{
   if (!key || !doc || !device || !host?.storageIdentity) throw Error('unavailable');
-  await device.remember(host.storageIdentity,scope,doc.vaultId,key);
-  status('This book can reopen on this browser while device storage remains available. Keep your recovery file.');
+  await keepOpen();
+  status('Your book stays open on this device until you lock it or log out.');
 }));
 $('forget-device').addEventListener('click',()=>run(async()=>{
   if (!device || !host?.storageIdentity) throw Error('unavailable');
   lock();
   try {await device.forget(host.storageIdentity);}
   finally {lockSignal?.broadcast();}
-  status('Device memory removed and Passport locked. Use your recovery file to reopen.');
+  status('This device forgot your book. Enter your code to open it again.');
 }));
 $('unlock-device').addEventListener('click',()=>run(async()=>{
   if (!device || !host?.storageIdentity) throw Error('unavailable');
@@ -500,23 +680,39 @@ $('unlock').addEventListener('change', e => {
   e.target.value = '';
   if (!file) return;
   void run(async () => {
-    const pending = { envelope, scope, etag, generation:vaultGeneration };
-    let recovery, result;
-    try { recovery = await jsonFile(file); } catch { throw Error('unlock-file'); }
-    if (recovery?.format === 'passport-vault-v1') throw Error('unlock-backup');
-    if (!recovery || recovery.format !== 'passport-recovery-v1' ||
-        Object.keys(recovery).sort().join(',') !== 'format,key,vaultId' ||
-        typeof recovery.vaultId !== 'string' || typeof recovery.key !== 'string') throw Error('unlock-file');
+    const pending = { envelope, etag, generation:vaultGeneration };
+    const parsed = await readRecoveryFile(file);
+    if (!parsed.ok) throw Error(parsed.reason === 'backup-file' ? 'unlock-backup' : 'unlock-file');
+    const recovery = parsed.recovery;
+    if (legacyEnvelope && recovery.vaultId === legacyEnvelope.vaultId) throw Error('unlock-legacy');
     if (recovery.vaultId !== pending.envelope?.vaultId) throw Error('unlock-wrong-book');
+    let result;
     try { result = await unlockVault(pending.envelope, recovery); } catch { throw Error('unlock-failed'); }
-    if (scope !== pending.scope || envelope !== pending.envelope || etag !== pending.etag ||
+    if (envelope !== pending.envelope || etag !== pending.etag ||
         vaultGeneration!==pending.generation) throw Error('unlock-changed');
-    key = result.key;
-    doc = result.document;
     recoverySaved = true;
-    render();
-    status('Your book is open.');
-    revealBook();
+    codeState = await readCodeStatus(host).catch(() => null) || codeState;
+    opened(result, codeFits(codeState, envelope) && !codeState.disabled ? 'Your book is open.' :
+      'Your book is open. Pick a 6-digit code below so next time is quicker.');
+    await keepOpen();
+    await mergeFromDevice();
+  });
+});
+$('legacy-recovery').addEventListener('change', e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  void run(async () => {
+    const parsed = await readRecoveryFile(file);
+    if (!parsed.ok) throw Error(parsed.reason === 'backup-file' ? 'unlock-backup' : 'unlock-file');
+    if (!key || !legacyEnvelope || parsed.recovery.vaultId !== legacyEnvelope.vaultId) throw Error('merge-wrong-book');
+    const pending = { generation: vaultGeneration, legacy: legacyEnvelope };
+    let legacy;
+    try { legacy = await unlockVault(pending.legacy, parsed.recovery); } catch { throw Error('unlock-failed'); }
+    if (vaultGeneration !== pending.generation || legacyEnvelope !== pending.legacy) throw Error('unlock-changed');
+    if (hasMerged(doc, legacy.document.vaultId)) return;
+    await save(mergeLegacyBook(doc, legacy.document));
+    status('Your Business book moved in. Its items carry a Business label. The old copy was not deleted.');
   });
 });
 for (const id of ['restore', 'restore-open']) $(id).addEventListener('change', e => run(() =>
@@ -701,35 +897,31 @@ $('delete-vault').addEventListener('click', () => run(async () => {
   status('Hosted vault removed. Existing backups, downloads and shared copies remain.');
 }));
 async function reloadVault() {
-  loaded = false; loadFailed = false; lock(); envelope = null; etag = null; render();
-  const generation=vaultGeneration, requestedScope=scope;
+  loaded = false; loadFailed = false; lock(); envelope = null; etag = null; legacyEnvelope = null; render();
+  const generation=vaultGeneration;
   status('Finding your saved book…');
-  let saved;
-  try { saved = await readSaved(); }
+  let saved, fresh, legacy;
+  // The book first; the code door and the older Business book never delay or replace it.
+  try { saved = await readSaved(); [fresh, legacy] = await Promise.all([readCodeStatus(host).catch(() => null), readLegacy()]); }
   catch (error) { if (vaultGeneration===generation) {loadFailed = true; render();} throw error; }
-  if (vaultGeneration!==generation || scope!==requestedScope) return;
-  envelope=saved.envelope; etag=saved.etag;
+  if (vaultGeneration!==generation) return;
+  envelope=saved.envelope; etag=saved.etag; codeState=fresh; legacyEnvelope=legacy;
   loaded = true;
-  if (envelope && device && host?.storageIdentity) {
+  if (envelope && device && host?.storageIdentity && codeState?.loginNonce) {
     try {
-      const opened=await device.restore(host.storageIdentity,scope,envelope);
-      if (vaultGeneration!==generation || scope!==requestedScope) return;
+      const opened=await device.restore(host.storageIdentity,BOOK_SCOPE,envelope,codeState.loginNonce);
+      if (vaultGeneration!==generation) return;
       if (opened) {key=opened.key;doc=opened.document;}
-    } catch { /* Recovery remains available after storage loss or an invalid wrapper. */ }
+    } catch { /* The code and recovery file remain available after storage loss or an invalid wrapper. */ }
   }
-  if (vaultGeneration!==generation || scope!==requestedScope) return;
+  if (vaultGeneration!==generation) return;
   render();
   status('');
+  if (key) await mergeFromDevice();
+  else if (!$('locked').hidden && !$('unlock-code').hidden) unlockEntry.focus();
 }
 $('reload-vault').addEventListener('click', () => run(async () => {
   if (await ask('Reload and lock this vault? Any unsaved form input will be cleared.')) await reloadVault();
-}));
-$('vault-scope').addEventListener('change', e => run(async () => {
-  const next = e.target.value;
-  e.target.value = scope;
-  if (!host.scopes.includes(next) || next === scope) return;
-  if (key && !await ask('Switch vaults and lock this one? Any unsaved form input will be cleared.')) return;
-  scope = next; e.target.value = scope; await reloadVault();
 }));
 // Sandbox intentionally has no allow-forms. Dispatch local form actions without navigation.
 for (const form of document.querySelectorAll('form')) {
@@ -741,6 +933,9 @@ for (const form of document.querySelectorAll('form')) {
     if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); submit(); }
   });
 }
+unlockEntry = mountCodeEntry($('unlock-code'), { label: 'Your 6-digit code', onComplete: code => run(() => tryCode(code)) });
+createEntry = mountCodeEntry($('create-code'), { label: 'Pick a 6-digit code', onComplete: code => run(() => createStep(code)) });
+setupEntry = mountCodeEntry($('setup-code'), { label: 'Pick a 6-digit code', onComplete: code => run(() => setupStep(code)) });
 render();
 await run(async () => {
   try { host = await connectHost(window,{expectedOrigins:ALLOWED_PARENT_ORIGINS}); }
@@ -760,11 +955,7 @@ await run(async () => {
     target.focus?.({preventScroll:true});target.scrollIntoView({block:'start',behavior:'instant'});
     return true;
   });
-  for (const value of host.scopes) {
-    const option = node('option', value === 'personal' ? 'Personal' : 'Business');
-    option.value = value; $('vault-scope').append(option);
-  }
-  $('vault-scope').value = scope;
+  host.onUnauthorized?.(() => lock());
   await reloadVault();
 });
 

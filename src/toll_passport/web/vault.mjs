@@ -89,6 +89,15 @@ function fields(value) {
   jsonValue(value);
 }
 
+/** Optional plain labels, e.g. {book:'business'}. Labels sort; they never authorize. */
+function labels(value) {
+  if (!object(value) || Object.keys(value).length > 20) fail();
+  for (const [name, label] of Object.entries(value)) {
+    if (!/^[a-z][a-z0-9_-]{0,63}$/.test(name)) fail();
+    string(label, 200);
+  }
+}
+
 function timestamp(value) {
   if (typeof value !== 'string' || value.length > 40 || !Number.isFinite(Date.parse(value)) ||
     new Date(value).toISOString() !== value) fail();
@@ -122,7 +131,7 @@ export function validateDocument(document) {
     if (!Array.isArray(entry.versions) || entry.versions.length < 1 || entry.versions.length >
       10000) fail();
     entry.versions.forEach((version, index) => {
-      keys(version, ['version', 'createdAt', 'kind', 'title', 'fields', 'tags', 'files']);
+      keys(version, ['version', 'createdAt', 'kind', 'title', 'fields', 'tags', 'files'], ['labels']);
       if (version.version !== index + 1) fail();
       timestamp(version.createdAt);
       string(version.kind, 100);
@@ -130,6 +139,7 @@ export function validateDocument(document) {
       fields(version.fields);
       tags(version.tags);
       files(version.files);
+      if (Object.hasOwn(version, 'labels')) labels(version.labels);
     });
   }
   serialize(document);
@@ -273,7 +283,7 @@ export async function unlockVault(envelope, recovery) {
 /** Optional id appends a new version to an existing entry. No existing version changes. */
 export function addEntry(document, input) {
   validateDocument(document);
-  keys(input, ['kind', 'title', 'fields'], ['id', 'tags', 'files']);
+  keys(input, ['kind', 'title', 'fields'], ['id', 'tags', 'files', 'labels']);
   const next = clone(document);
   let entry;
   if (Object.hasOwn(input, 'id')) {
@@ -300,6 +310,12 @@ export function addEntry(document, input) {
     tags: [...new Set(normalizedTags.map(t => t.trim().toLowerCase()).filter(Boolean))],
     files: input.files === undefined ? [] : clone(input.files)
   });
+  // A new version keeps its entry's labels unless the caller names new ones.
+  const inherited = Object.hasOwn(input, 'labels') ? input.labels : entry.versions.at(-2)?.labels;
+  if (inherited !== undefined && Object.keys(inherited).length) {
+    labels(inherited);
+    entry.versions.at(-1).labels = clone(inherited);
+  }
   next.revision += 1;
   return validateDocument(next);
 }

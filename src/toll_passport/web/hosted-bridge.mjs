@@ -15,14 +15,35 @@ export const validateStorageIdentity = v => exact(v, ['ownerBinding', 'parentOri
 const exact = (v, fields) => v !== null && typeof v === 'object' && !Array.isArray(v) &&
   Object.keys(v).length === fields.length && fields.every(k => Object.hasOwn(v, k));
 const baseFields = ['protocol', 'type', 'nonce', 'capability', 'id', 'op', 'scope'];
+// Code-lock doors carry no book bytes and act only on the one book.
+export const CODE_OPS = Object.freeze(['code-status', 'code-unlock', 'code-set']);
+const CODE_ERRORS = ['wrong', 'disabled', 'no-code', 'rate'];
 const base = v => v?.protocol === PROTOCOL && uuid.test(v.nonce) && token(v.capability) &&
-  uuid.test(v.id) && ['load', 'save', 'delete'].includes(v.op) && scope(v.scope);
+  uuid.test(v.id) && (['load', 'save', 'delete'].includes(v.op) && scope(v.scope) ||
+    CODE_OPS.includes(v.op) && v.scope === 'personal');
 const binary = (v, max, min = 0) => {
   if (typeof v !== 'string' || v.length > Math.ceil(max / 3) * 4 || v.length % 4 ||
       !/^[A-Za-z0-9+/]*={0,2}$/.test(v)) return false;
   const bytes = v.length / 4 * 3 - (v.endsWith('==') ? 2 : v.endsWith('=') ? 1 : 0);
   return bytes >= min && bytes <= max;
 };
+const attempts = v => Number.isSafeInteger(v) && v >= 0 && v <= 10;
+const loginNonce = v => typeof v === 'string' && /^[A-Za-z0-9_-]{22,128}$/.test(v);
+export const validateWrappedKey = v => exact(v, ['nonce', 'ciphertext']) && binary(v.nonce, 12, 12) &&
+  binary(v.ciphertext, 48, 48);
+/** Server view of the code: public salt and counters only, never the share. */
+export const validateCodeStatus = v => exact(v, ['hasCode', 'vaultId', 'salt', 'iterations', 'attemptsLeft',
+  'disabled', 'loginNonce']) && typeof v.hasCode === 'boolean' && typeof v.disabled === 'boolean' &&
+  attempts(v.attemptsLeft) && (v.loginNonce === null || loginNonce(v.loginNonce)) && (v.hasCode ?
+    uuid.test(v.vaultId) && binary(v.salt, 16, 16) && Number.isSafeInteger(v.iterations) &&
+      v.iterations >= 600000 && v.iterations <= 10000000 :
+    v.vaultId === null && v.salt === null && v.iterations === null && !v.disabled);
+export const validateCodeSet = v => exact(v, ['vaultId', 'salt', 'iterations', 'auth', 'share', 'wrappedKey']) &&
+  uuid.test(v.vaultId) && binary(v.salt, 16, 16) && Number.isSafeInteger(v.iterations) &&
+  v.iterations >= 600000 && v.iterations <= 10000000 && binary(v.auth, 32, 32) &&
+  binary(v.share, 32, 32) && validateWrappedKey(v.wrappedKey);
+export const validateCodeOpened = v => exact(v, ['share', 'wrappedKey', 'vaultId']) &&
+  binary(v.share, 32, 32) && validateWrappedKey(v.wrappedKey) && uuid.test(v.vaultId);
 export const validateEnvelope = v => exact(v, ['format', 'vaultId', 'revision', 'nonce', 'ciphertext']) &&
   v.format === 'passport-vault-v1' && uuid.test(v.vaultId) && Number.isSafeInteger(v.revision) &&
   v.revision > 0 && binary(v.nonce, 12, 12) && binary(v.ciphertext, MAX_VAULT_BYTES, 16);
@@ -43,16 +64,25 @@ export const validateInit = v => (exact(v, ['protocol', 'type', 'nonce', 'capabi
   new Set(v.scopes).size === v.scopes.length && v.scopes.every(scope) && v.scopes.includes(v.scope);
 export function validateRequest(v) {
   if (!base(v) || v.type !== 'request') return false;
-  if (v.op === 'load') return exact(v, baseFields);
+  if (v.op === 'load' || v.op === 'code-status') return exact(v, baseFields);
+  if (v.op === 'code-unlock') return exact(v, [...baseFields, 'auth']) && binary(v.auth, 32, 32);
+  if (v.op === 'code-set') return exact(v, [...baseFields, 'code']) && validateCodeSet(v.code);
   if (v.op === 'delete') return exact(v, [...baseFields, 'expectedEtag']) && etag(v.expectedEtag);
   return exact(v, [...baseFields, 'expectedEtag', 'envelope']) &&
     (v.expectedEtag === null || etag(v.expectedEtag)) && validateEnvelope(v.envelope);
 }
 export function validateResult(v) {
   if (!base(v) || v.type !== 'result') return false;
-  if (v.ok === false) return exact(v, [...baseFields, 'ok', 'error']) &&
-    ['conflict', 'unauthorized', 'unavailable', 'invalid', 'quota'].includes(v.error);
+  if (v.ok === false) {
+    if (CODE_OPS.includes(v.op) && CODE_ERRORS.includes(v.error))
+      return exact(v, [...baseFields, 'ok', 'error', 'attemptsLeft']) && attempts(v.attemptsLeft);
+    return exact(v, [...baseFields, 'ok', 'error']) &&
+      ['conflict', 'unauthorized', 'unavailable', 'invalid', 'quota'].includes(v.error);
+  }
   if (v.ok !== true) return false;
+  if (v.op === 'code-status' || v.op === 'code-set') return exact(v, [...baseFields, 'ok', 'status']) &&
+    validateCodeStatus(v.status);
+  if (v.op === 'code-unlock') return exact(v, [...baseFields, 'ok', 'opened']) && validateCodeOpened(v.opened);
   if (v.op === 'load') return exact(v, [...baseFields, 'ok', 'etag', 'envelope']) &&
     ((v.envelope === null && v.etag === null) || (validateEnvelope(v.envelope) && etag(v.etag)));
   return exact(v, [...baseFields, 'ok', 'etag']) && (v.op === 'delete' ? v.etag === null : etag(v.etag));
@@ -66,7 +96,7 @@ export function connectHost(win = window, { timeout = 30000, expectedOrigins = [
       reject(Error('invalid-origin-policy')); return;
     }
     const nonce = crypto.randomUUID(), pending = new Map();
-    let origin, capability, scopes, closed = false, controlHandler = null, questionUI = null;
+    let origin, capability, scopes, closed = false, controlHandler = null, questionUI = null, unauthorizedHandler = null;
     const send = message => win.parent.postMessage(message, origin || '*');
     const close = () => {
       closed = true;
@@ -108,13 +138,16 @@ export function connectHost(win = window, { timeout = 30000, expectedOrigins = [
             send({protocol:PROTOCOL,type:'open-book',nonce,capability});
           },
           setControlHandler(handler) { if (typeof handler !== 'function') throw Error('invalid'); controlHandler=handler; },
-          request(op, scope, payload = {}) {
+          // A signed-out or switched account answers unauthorized; open books must close.
+          onUnauthorized(handler) { if (typeof handler !== 'function') throw Error('invalid'); unauthorizedHandler=handler; },
+          request(op, scope, payload = {}, { timeout: limit = timeout } = {}) {
           if (closed) return Promise.reject(Error('unavailable'));
           const message = { protocol: PROTOCOL, type: 'request', nonce, capability,
             id: crypto.randomUUID(), op, scope, ...payload };
           if (!scopes.includes(scope) || !validateRequest(message)) return Promise.reject(Error('invalid'));
           return new Promise((resolve, reject) => {
-            const timer = setTimeout(() => { pending.delete(message.id); reject(Error('unavailable')); }, timeout);
+            const timer = setTimeout(() => { pending.delete(message.id); reject(Error('unavailable')); },
+              Math.min(timeout, Number.isSafeInteger(limit) && limit > 0 ? limit : timeout));
             pending.set(message.id, { resolve, reject, timer, op, scope });
             send(message);
           });
@@ -136,7 +169,13 @@ export function connectHost(win = window, { timeout = 30000, expectedOrigins = [
       const p = pending.get(v.id);
       if (!p || p.op !== v.op || p.scope !== v.scope) return;
       clearTimeout(p.timer); pending.delete(v.id);
-      if (v.ok) p.resolve(v); else p.reject(Error(v.error));
+      if (v.ok) p.resolve(v);
+      else {
+        const error = Error(v.error);
+        if (Object.hasOwn(v, 'attemptsLeft')) error.attemptsLeft = v.attemptsLeft;
+        if (v.error === 'unauthorized') unauthorizedHandler?.();
+        p.reject(error);
+      }
     };
     const timer = setTimeout(() => { close(); reject(Error('unavailable')); }, timeout);
     win.addEventListener('message', receive);

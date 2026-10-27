@@ -29,3 +29,7 @@ Use the repository's private GitHub vulnerability reporting facility when enable
 ## Hosted client component
 
 The separate source entry point `hosted.html` runs in an opaque sandbox and exchanges only validated encrypted envelopes and storage metadata with its parent. Recovery keys and decrypted data remain inside the frame. The authenticated host must enforce owner permissions, atomic ETags and storage quotas. Read the [required embedding contract and delivery threat boundary](docs/HOSTED.md) before integrating. This component does not change the published local server, implement team key sharing or constitute an independent security audit.
+
+## Book code (hosted)
+
+The hosted book can open with a 6-digit code. The browser stretches the code (PBKDF2-SHA256, 600,000 rounds, per-book salt) and sends only a derived proof. The host keeps a peppered verifier and a sealed 32-byte share, releases the share only after the right code, turns the code off after 10 wrong tries and limits tries per minute. The browser needs its own half of the derived key and the share to unwrap the book key. The pepper and at-rest key must live in a private file outside the database. Someone holding both the database and that file can search all one million codes offline; a short code is a convenience lock, not a substitute for the recovery file or a protected device. A kept-open book is bound to one login session and ends on Lock, logout or a new login. Details and the reference server module: [docs/CODE_LOCK.md](docs/CODE_LOCK.md).

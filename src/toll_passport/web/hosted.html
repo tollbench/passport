@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Passport — Your private information</title><link rel="stylesheet" href="./style.css"><script type="module" src="./entry.mjs" crossorigin="anonymous"></script></head>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Passport — Your private information</title><link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./book-lock.css"><script type="module" src="./entry.mjs" crossorigin="anonymous"></script></head>
 
 <body class="hosted-book">
 
@@ -21,31 +21,40 @@
 <p id="intro-description" class="intro">Your notes, files and saved answers, together in one private book.</p>
 </section>
 <div id="status" tabindex="-1" role="status" aria-live="polite">Finding your saved book…</div>
-<div class="book-context"><label class="book-selector">Your book<select id="vault-scope" disabled></select></label><button id="reload-vault" class="secondary" hidden>Reload saved book</button></div>
+<div class="book-context"><label class="book-selector" hidden>Your book<select id="vault-scope" disabled></select></label><button id="reload-vault" class="secondary" hidden>Reload saved book</button></div>
 <section id="restore-pending" class="book-door" hidden>
 <h2 id="restore-heading" tabindex="-1">Open this backup.</h2>
 <p>Your encrypted backup is ready. Choose the recovery file that belongs to it. Nothing is replaced until the backup opens successfully.</p>
 <label id="restore-recovery-label" class="file-button" for="restore-recovery">Choose this backup’s recovery file<input id="restore-recovery" type="file" accept=".json,application/json"></label>
 <button id="cancel-restore" class="secondary" type="button">Cancel restore</button>
 </section>
-<section id="creation" class="book-door" hidden>
-<div class="eyebrow">BEFORE YOUR FIRST SAVE</div><h2 id="creation-heading" tabindex="-1">Keep the key to your book.</h2>
-<p>Your browser has offered a recovery file. Save it somewhere safe: it is the key you will use to open this book again. It cannot be reset for you.</p>
-<button id="confirm-create">I saved my key — open my book</button><button id="retry-recovery" class="secondary">Download recovery file again</button><button id="cancel-create" class="secondary">Cancel creation</button>
-</section>
 <section id="welcome" class="book-door" hidden>
-<h2>Start your private library.</h2><p>Your browser creates a new encryption key for you. Save its recovery file, then start adding your information. You do not need an existing key to begin.</p>
-<button id="create">Create your private book</button>
+<h2 id="welcome-heading" tabindex="-1">Start your book.</h2>
+<p id="welcome-text">Pick a 6-digit code. You will use it to open your book on any device where you are logged in.</p>
+<div id="create-code" class="code-slot"></div>
+<p id="create-feedback" class="code-feedback" role="status" aria-live="polite"></p>
+<button id="create-restart" class="secondary" type="button" hidden>Start over</button>
+<button id="create" type="button" hidden>Create your private book</button>
 <details id="restore-book"><summary>Already have a backup?</summary><p>Choose your encrypted backup, then its matching recovery file.</p><label class="file-button" for="restore">Restore encrypted backup<input id="restore" type="file" accept=".json,application/json"></label></details>
 </section>
 <section id="locked" class="book-door" hidden>
 <div class="door-lock" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 14V9a6 6 0 0 1 12 0v5"/><rect x="6" y="14" width="20" height="15" rx="3"/><path d="M16 20v4"/></svg></div>
-<div class="eyebrow">SAVED BOOK · LOCKED ON THIS DEVICE</div><h2 id="locked-heading">Your book is locked.</h2>
-<p>Open it with the recovery file you saved when you created this book. That file is your key; it stays on this device.</p>
+<div class="eyebrow">YOUR BOOK IS LOCKED</div><h2 id="locked-heading" tabindex="-1">Enter your 6-digit code.</h2>
+<p id="locked-text">Type the code you picked for your book.</p>
+<div id="unlock-code" class="code-slot"></div>
+<p id="unlock-feedback" class="code-feedback" role="status" aria-live="polite"></p>
+<button id="use-recovery" type="button" class="link-button">Use recovery file</button>
+<div id="recovery-door" hidden>
 <label class="file-button unlock-file">Open with recovery file<input id="unlock" type="file" accept=".json,application/json"></label>
+<p class="muted">Your recovery file is the backup key you saved when you made your book. New ones are named <strong>passport-recovery.json</strong>. Older ones may be named <strong>passport-personal-recovery.json</strong>.</p>
+<details class="recovery-help"><summary>Why do I need this file?</summary><p>The host keeps your book locked and cannot open it. If you forget your code, or it was turned off after 10 wrong tries, the recovery file opens your book. Then you pick a new code.</p></details>
+</div>
 <button id="unlock-device" class="secondary" hidden>Unlock this device</button>
-<p class="muted">New recovery files are named <strong>passport-personal-recovery.json</strong> or <strong>passport-business-recovery.json</strong>. Older files may be named <strong>passport-recovery.json</strong>. Choose the recovery file saved for the book selected above.</p>
-<details class="recovery-help"><summary>Why do I need this file?</summary><p>The host stores your book encrypted and cannot open it or reset its key. Use the recovery file for this book. An encrypted backup alone cannot unlock it.</p></details>
+</section>
+<section id="creation" class="book-door backup-notice" hidden>
+<div class="eyebrow">KEEP A BACKUP</div><h2 id="creation-heading" tabindex="-1">Your book is ready.</h2>
+<p id="creation-text">Your browser offered a recovery file. Keep it somewhere safe. If you ever forget your code, that file opens your book.</p>
+<button id="confirm-create" type="button">Done</button><button id="retry-recovery" class="secondary" type="button">Download recovery file again</button><button id="cancel-create" class="secondary" type="button" hidden>Cancel creation</button>
 </section>
 <aside id="book-map" class="book-map" aria-label="What your book can hold">
 <h2>Inside your book</h2><p class="muted">A private wiki you build over time.</p>
@@ -56,6 +65,18 @@
 </aside>
 
 <div id="book" hidden>
+<section id="code-setup" class="book-door code-setup" hidden>
+<div class="eyebrow" id="code-setup-eyebrow">ONE MORE STEP</div><h2 id="code-setup-heading" tabindex="-1">Pick a 6-digit code.</h2>
+<p id="code-setup-text">Next time, you open your book with this code instead of the file.</p>
+<div id="setup-code" class="code-slot"></div>
+<p id="setup-feedback" class="code-feedback" role="status" aria-live="polite"></p>
+<button id="cancel-code-setup" type="button" class="link-button" hidden>Not now</button>
+</section>
+<section id="legacy-merge" class="book-door" hidden>
+<div class="eyebrow">ONE BOOK NOW</div><h2 id="legacy-heading" tabindex="-1">Move your Business book in.</h2>
+<p>Personal and Business are one book now. Choose the recovery file for your older Business book. Its notes and files move in with a Business label. Nothing is deleted.</p>
+<label class="file-button">Choose Business recovery file<input id="legacy-recovery" type="file" accept=".json,application/json"></label>
+</section>
 <div class="book-open-heading">
 <div>
 <div class="eyebrow">YOUR PRIVATE LIBRARY</div><h1 id="book-heading" tabindex="-1">Your book</h1><p id="book-count" class="muted"></p>
@@ -84,7 +105,7 @@
 <details id="book-tools"><summary>Recovery, export and vault settings</summary>
 <p class="muted">25 MiB per file. 100 MiB encrypted-vault limit, including encoding and versions. The host may apply a smaller account quota.</p>
 <nav class="toolbar" aria-label="Vault controls"><button id="backup" class="secondary">Export encrypted backup</button><button id="recovery" class="secondary">Save recovery file</button>
-<button id="remember-device" class="secondary" hidden>Remember this device</button><button id="forget-device" class="secondary" hidden>Forget this device</button>
+<button id="change-code" class="secondary" type="button">Change your code</button><button id="remember-device" class="secondary" hidden>Remember this device</button><button id="forget-device" class="secondary" hidden>Forget this device</button>
 </nav><p id="usage" class="muted"></p>
 <details><summary>Portability and received information</summary><label class="file-button" for="restore-open">Restore another encrypted backup<input id="restore-open" type="file" accept=".json,application/json"></label><label class="file-button">Open a shared package<input id="receive" type="file" accept=".json,application/json"></label><label class="file-button">Choose that package’s key<input id="receive-key" type="file" accept=".json,application/json"></label><button id="open-release" class="secondary">Preview shared information</button>
 <div id="received">

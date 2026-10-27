@@ -17,7 +17,7 @@ if(validateItemReady(q)){inonce=q.nonce;send({protocol:ITEM_PROTOCOL,type:'init'
 if(validateItemRelease(q)&&q.nonce===inonce&&q.capability===cap){if(!ack||ack.scope!=='business'||ack.revision!==q.savedRevision)throw Error('No same-session save acknowledgement');if(!releases.some(r=>r.approvalId===q.approvalId))releases.push(q);send({protocol:ITEM_PROTOCOL,type:'receipt',nonce:inonce,capability:cap,id:q.id,...(failGrant?{ok:false,error:'unavailable'}:{ok:true,grantId:'grant-one',receiptId:'item-receipt'})});return;}
 if(validateReady(q)){nonce=q.nonce;send({protocol:PROTOCOL,type:'init',nonce,capability:cap,scopes:['personal','business'],scope:'business'});return;}
 if(!validateRequest(q)||q.nonce!==nonce||q.capability!==cap)return;const base={protocol:PROTOCOL,type:'result',nonce,capability:cap,id:q.id,op:q.op,scope:q.scope},old=JSON.parse(localStorage.getItem(q.scope)||'null');
-if(q.op==='load'){send({...base,ok:true,envelope:old?.envelope||null,etag:old?.etag||null});return;}if(failSave){send({...base,ok:false,error:'unavailable'});return;}if(q.op==='save'){const etag=crypto.randomUUID();localStorage.setItem(q.scope,JSON.stringify({envelope:q.envelope,etag}));ack={revision:q.envelope.revision,scope:q.scope,etag};send({...base,ok:true,etag});}
+if(q.op==='load'){send({...base,ok:true,envelope:old?.envelope||null,etag:old?.etag||null});return;}if(failSave){send({...base,ok:false,error:'unavailable'});return;}if(q.op==='save'){const etag=crypto.randomUUID();localStorage.setItem(q.scope,JSON.stringify({envelope:q.envelope,etag}));ack={revision:q.envelope.revision,scope:q.scope==='personal'?'business':q.scope,etag};send({...base,ok:true,etag});}
 });</script>'''
 class Handler(SimpleHTTPRequestHandler):
  def log_message(self,*args):pass

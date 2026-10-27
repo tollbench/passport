@@ -1,0 +1,33 @@
+/* Copyright 2026 Steven Ochs and Tollbench. SPDX-License-Identifier: Apache-2.0 */
+/* The 6-digit book lock. Uses the colors already defined in style.css. */
+.code-slot { margin: 18px 0 8px; }
+.code-entry { display: flex; gap: 8px; justify-content: flex-start; flex-wrap: nowrap; }
+.code-entry input.code-digit {
+  display: block; width: 46px; height: 56px; margin: 0; padding: 0; flex: 0 0 auto;
+  border: 1.5px solid #d8d1e4; border-radius: 12px; background: #fff; color: #282532;
+  text-align: center; font: 600 24px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  caret-color: var(--purple); -webkit-text-security: disc;
+}
+.code-entry input.code-digit:focus { border-color: var(--purple); outline: none; box-shadow: 0 0 0 3px #e4dcf5; }
+.code-entry input.code-digit:disabled { opacity: .55; }
+.code-entry.code-wrong { animation: code-shake .32s ease-in-out; }
+@keyframes code-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+@media (prefers-reduced-motion: reduce) { .code-entry.code-wrong { animation: none; } }
+.code-feedback { min-height: 1.4em; font-size: 14px; color: var(--purple); margin: 6px 0 4px; }
+.code-feedback:empty { min-height: 0; margin: 0; }
+button.link-button {
+  background: transparent; color: var(--purple); padding: 4px 0; margin: 4px 0; font-size: 14px;
+  font-weight: 600; text-decoration: underline; text-underline-offset: 3px; border-radius: 0;
+}
+#recovery-door { margin-top: 10px; }
+.code-setup, .backup-notice { border-color: #d9d1eb; background: #faf8fd; }
+.hosted-book #code-setup-heading:focus, .hosted-book #locked-heading:focus,
+.hosted-book #welcome-heading:focus, .hosted-book #legacy-heading:focus { outline: none; }
+.record-label {
+  display: inline-block; margin: 0 0 4px; padding: 1px 8px; border-radius: 8px;
+  background: #f0eafa; color: var(--purple); font: 600 10px/1.6 monospace; letter-spacing: 1px; text-transform: uppercase;
+}
+@media (max-width: 380px) {
+  .code-entry { gap: 6px; }
+  .code-entry input.code-digit { width: 40px; height: 50px; font-size: 22px; }
+}

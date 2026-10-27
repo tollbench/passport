@@ -9,14 +9,20 @@ const b64 = bytes => btoa(String.fromCharCode(...bytes));
 const raw = value => Uint8Array.from(atob(value), c => c.charCodeAt(0));
 const keyName = identity => `key:${identity.parentOrigin}:${identity.ownerBinding}`;
 const lockName = identity => `lock:${identity.parentOrigin}:${identity.ownerBinding}`;
-const wrapName = (identity, scope, vaultId) =>
+// v1 wrappers (no login nonce) are read only to move a legacy book in.
+const legacyName = (identity, scope, vaultId) =>
   `vault:${identity.parentOrigin}:${identity.ownerBinding}:${scope}:${vaultId}`;
-const aad = (identity, scope, vaultId) => encoder.encode(JSON.stringify([
+// v2 wrappers live only as long as one login: a new login issues a new nonce.
+const sessionPrefix = (identity, scope) => `vault2:${identity.parentOrigin}:${identity.ownerBinding}:${scope}:`;
+const wrapName = (identity, scope, vaultId, loginNonce) => `${sessionPrefix(identity, scope)}${vaultId}:${loginNonce}`;
+const aad = (identity, scope, vaultId, loginNonce) => encoder.encode(JSON.stringify(loginNonce === null ? [
   'passport-device-wrap-v1', identity.parentOrigin, identity.ownerBinding, scope, vaultId
-]));
-function check(identity, scope, vaultId) {
+] : ['passport-device-wrap-v2', identity.parentOrigin, identity.ownerBinding, scope, vaultId, loginNonce]));
+const validNonce = v => typeof v === 'string' && /^[A-Za-z0-9_-]{22,128}$/.test(v);
+function check(identity, scope, vaultId, loginNonce = null) {
   if (!validateStorageIdentity(identity) || !['personal','business'].includes(scope) ||
-      typeof vaultId !== 'string' || !uuid.test(vaultId)) throw Error('invalid');
+      typeof vaultId !== 'string' || !uuid.test(vaultId) ||
+      (loginNonce !== null && !validNonce(loginNonce))) throw Error('invalid');
 }
 
 /** Storage adapter values include nonextractable CryptoKey objects. */
@@ -47,8 +53,9 @@ export function createDeviceMemory(storage) {
     return key;
   }
   return {
-    async remember(identity, scope, vaultId, vaultKey) {
-      check(identity, scope, vaultId);
+    /** Keeps an opened book open on this device for this login only. */
+    async remember(identity, scope, vaultId, vaultKey, loginNonce) {
+      check(identity, scope, vaultId, loginNonce ?? '');
       if (vaultKey?.type !== 'secret' || !vaultKey.extractable ||
           vaultKey.algorithm?.name !== 'AES-GCM' || vaultKey.algorithm?.length !== 256) throw Error('invalid');
       const started = generation(identity);
@@ -59,55 +66,50 @@ export function createDeviceMemory(storage) {
       try {
         bytes = new Uint8Array(await crypto.subtle.exportKey('raw', vaultKey));
         const ciphertext = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv:nonce,
-          additionalData:aad(identity,scope,vaultId),tagLength:128}, wrappingKey, bytes));
+          additionalData:aad(identity,scope,vaultId,loginNonce),tagLength:128}, wrappingKey, bytes));
         if (generation(identity) !== started) throw Error('device-operation-canceled');
-        await storage.put(wrapName(identity,scope,vaultId),
-          {format:'passport-device-wrap-v1',nonce:b64(nonce),ciphertext:b64(ciphertext)});
+        // One live wrapper per book: older logins and older books are dropped.
+        const prefix = sessionPrefix(identity, scope);
+        for (const name of await storage.keys()) if (name.startsWith(prefix)) await storage.delete(name);
+        await storage.put(wrapName(identity,scope,vaultId,loginNonce),
+          {format:'passport-device-wrap-v2',nonce:b64(nonce),ciphertext:b64(ciphertext)});
       } finally { bytes?.fill(0); }
       });
     },
-    async restore(identity, scope, envelope) {
+    /** Reopens only a wrapper made during this same login. */
+    async restore(identity, scope, envelope, loginNonce) {
+      if (!validateEnvelope(envelope)) throw Error('invalid');
+      if (!validNonce(loginNonce)) return null;
+      check(identity,scope,envelope.vaultId,loginNonce);
+      return open(identity, scope, envelope, wrapName(identity,scope,envelope.vaultId,loginNonce),
+        'passport-device-wrap-v2', loginNonce);
+    },
+    /** Reads an old opt-in wrapper (before codes) so a legacy book can move in. */
+    async restoreLegacy(identity, scope, envelope) {
       if (!validateEnvelope(envelope)) throw Error('invalid');
       check(identity,scope,envelope.vaultId);
-      const started = generation(identity);
-      if (await storage.get(lockName(identity))) return null;
-      const [key, wrapper] = await Promise.all([
-        storage.get(keyName(identity)), storage.get(wrapName(identity,scope,envelope.vaultId))
-      ]);
-      if (!key || !wrapper) return null;
-      if (key.extractable || key.type !== 'secret' || key.algorithm?.name !== 'AES-GCM' ||
-          wrapper.format !== 'passport-device-wrap-v1' || typeof wrapper.nonce !== 'string' ||
-          typeof wrapper.ciphertext !== 'string') throw Error('device-storage-invalid');
-      let bytes;
-      try {
-        if (!/^[A-Za-z0-9+/]{16}$/.test(wrapper.nonce) ||
-            !/^[A-Za-z0-9+/]{64}$/.test(wrapper.ciphertext)) throw Error('invalid');
-        const nonce=raw(wrapper.nonce);
-        if (nonce.length !== 12) throw Error('invalid');
-        bytes = new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:nonce,
-          additionalData:aad(identity,scope,envelope.vaultId),tagLength:128},key,raw(wrapper.ciphertext)));
-        if (bytes.length !== 32) throw Error('invalid');
-        const vaultKey=await crypto.subtle.importKey('raw',bytes,{name:'AES-GCM'},true,['encrypt','decrypt']);
-        const opened = await unlockVaultWithKey(envelope,vaultKey);
-        if (generation(identity) !== started || await storage.get(lockName(identity))) return null;
-        return opened;
-      } catch { throw Error('device-unlock-failed'); }
-      finally { bytes?.fill(0); }
+      return open(identity, scope, envelope, legacyName(identity,scope,envelope.vaultId),
+        'passport-device-wrap-v1', null);
     },
     async forget(identity) {
       if (!validateStorageIdentity(identity)) throw Error('invalid');
       invalidate(identity);
       return mutate(identity, async () => {
-      const prefix=`vault:${identity.parentOrigin}:${identity.ownerBinding}:`;
-      for (const name of await storage.keys()) if (name.startsWith(prefix)) await storage.delete(name);
+      const prefixes=['vault:','vault2:'].map(p=>`${p}${identity.parentOrigin}:${identity.ownerBinding}:`);
+      for (const name of await storage.keys()) if (prefixes.some(p=>name.startsWith(p))) await storage.delete(name);
       await storage.delete(keyName(identity));
       await storage.delete(lockName(identity));
       });
     },
+    /** Lock ends this login's open book: the code is needed again. */
     async lock(identity) {
       if (!validateStorageIdentity(identity)) throw Error('invalid');
       invalidate(identity);
-      return mutate(identity, () => storage.put(lockName(identity), true));
+      return mutate(identity, async () => {
+        await storage.put(lockName(identity), true);
+        const prefix=`vault2:${identity.parentOrigin}:${identity.ownerBinding}:`;
+        for (const name of await storage.keys()) if (name.startsWith(prefix)) await storage.delete(name);
+      });
     },
     async unlockDevice(identity) {
       if (!validateStorageIdentity(identity)) throw Error('invalid');
@@ -117,11 +119,35 @@ export function createDeviceMemory(storage) {
       if (!validateStorageIdentity(identity)) throw Error('invalid');
       return !!await storage.get(lockName(identity));
     },
-    async remembered(identity,scope,vaultId) {
-      check(identity,scope,vaultId);
-      return !!await storage.get(wrapName(identity,scope,vaultId));
+    async remembered(identity,scope,vaultId,loginNonce) {
+      check(identity,scope,vaultId,loginNonce ?? '');
+      return !!await storage.get(wrapName(identity,scope,vaultId,loginNonce));
     }
   };
+  async function open(identity, scope, envelope, name, format, loginNonce) {
+      const started = generation(identity);
+      if (await storage.get(lockName(identity))) return null;
+      const [key, wrapper] = await Promise.all([storage.get(keyName(identity)), storage.get(name)]);
+      if (!key || !wrapper) return null;
+      if (key.extractable || key.type !== 'secret' || key.algorithm?.name !== 'AES-GCM' ||
+          wrapper.format !== format || typeof wrapper.nonce !== 'string' ||
+          typeof wrapper.ciphertext !== 'string') throw Error('device-storage-invalid');
+      let bytes;
+      try {
+        if (!/^[A-Za-z0-9+/]{16}$/.test(wrapper.nonce) ||
+            !/^[A-Za-z0-9+/]{64}$/.test(wrapper.ciphertext)) throw Error('invalid');
+        const nonce=raw(wrapper.nonce);
+        if (nonce.length !== 12) throw Error('invalid');
+        bytes = new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:nonce,
+          additionalData:aad(identity,scope,envelope.vaultId,loginNonce),tagLength:128},key,raw(wrapper.ciphertext)));
+        if (bytes.length !== 32) throw Error('invalid');
+        const vaultKey=await crypto.subtle.importKey('raw',bytes,{name:'AES-GCM'},true,['encrypt','decrypt']);
+        const opened = await unlockVaultWithKey(envelope,vaultKey);
+        if (generation(identity) !== started || await storage.get(lockName(identity))) return null;
+        return opened;
+      } catch { throw Error('device-unlock-failed'); }
+      finally { bytes?.fill(0); }
+  }
 }
 
 /** A dedicated HTTPS origin supplies this IndexedDB store; opaque origins cannot use it. */
