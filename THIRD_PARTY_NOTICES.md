@@ -14,7 +14,7 @@ Any future vendored material must add its source, exact version, license and req
 
 ### potion-base-8M model weights and vocabulary (the organizer)
 
-- Files: `src/toll_passport/web/organizer/model.mjs` and `src/toll_passport/web/organizer/vocab.mjs`.
+- Files: `src/toll_passport/web/organizer/model.mjs`, `vocab.mjs` and `vectors-1.mjs` to `vectors-3.mjs` in the same directory.
 - What they are: the embedding table of the static sentence-embedding model `minishlab/potion-base-8M`, converted to int8 per row with one float32 scale per row, and its WordPiece vocabulary. Converted by `scripts/build_organizer_model.py`; no upstream code is included.
 - Source: https://huggingface.co/minishlab/potion-base-8M at revision `bf8b056651a2c21b8d2565580b8569da283cab23`. Input SHA-256: `model.safetensors` `f65d0f325faadc1e121c319e2faa41170d3fa07d8c89abd48ca5358d9a223de2`, `tokenizer.json` `e67e803f624fb4d67dea1c730d06e1067e1b14d830e2c2202569e3ef0f70bb50`, `config.json` `2a6ac0e9aaa356a68a5688070db78fc3a464fefe85d2f06a1905ce3718687553`.
 - Authors: The Minish Lab (Stephan Tulkens and Thomas van Dongen), https://github.com/MinishLab/model2vec .
