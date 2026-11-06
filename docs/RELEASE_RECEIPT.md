@@ -1,5 +1,22 @@
 # Verified Passport releases
 
+## 2026-11-05 — Tollbench recovery-key filenames, 0.1.0a19
+
+Tagged source: [`dea70265c04c0ff7bd94cdbe03cf6b7127d2e8c8`](https://github.com/tollbench/passport/commit/dea70265c04c0ff7bd94cdbe03cf6b7127d2e8c8), annotated `v0.1.0a19`.
+
+- [Exact-source CI](https://github.com/tollbench/passport/actions/runs/42175291137) passed both Python matrices, 109 JavaScript tests, 19 installed-wheel Python tests and browser acceptance.
+- [Trusted publication](https://github.com/tollbench/passport/actions/runs/42175705387) passed build and publication on the exact tag.
+- [GitHub prerelease](https://github.com/tollbench/passport/releases/tag/v0.1.0a19) and [PyPI 0.1.0a19](https://pypi.org/project/toll-passport/0.1.0a19/) are available.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `toll_passport-0.1.0a19-py3-none-any.whl` | `746d1c62120bd133d91449003c709b104dc9b42a4a942a8b0f57107fbcfb5388` |
+| `toll_passport-0.1.0a19.tar.gz` | `38b252443d6092b4782a9b0c390082067b45ff87bca007dec6bb83dc090a01b1` |
+
+Independent PyPI downloads match these digests and the reviewed build's file contents. Wheel and sdist contain only tracked public source/distribution files. PyPI provenance names `tollbench/passport`, `publish.yml` and environment `pypi`; GitHub release attachments are those exact PyPI files. An isolated wheel installation passed all 19 Python tests.
+
+New recovery-key downloads use `tollbench-passport-recovery.json`; separately exported package keys use `tollbench-passport-shared-key.json`. Old files remain usable through the same format and vault-ID checks. The change affects filenames/help text, with no cryptographic or storage-format changes.
+
 ## 2026-10-24 — Ordinary optional-connect questions, 0.1.0a17
 
 Tagged source: [`4c797d2657f8c0d453028ac642c0ff1d992c5c2f`](https://github.com/tollbench/passport/commit/4c797d2657f8c0d453028ac642c0ff1d992c5c2f), annotated `v0.1.0a17`.
