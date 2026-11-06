@@ -72,7 +72,7 @@ with tempfile.TemporaryDirectory(prefix='passport-unlock-fixture-') as directory
     assert f.locator('#vault-scope').is_hidden()  # one book, no switcher
     with page.expect_download() as download:
         f.locator('#create').click()
-    assert download.value.suggested_filename == 'passport-recovery.json'
+    assert download.value.suggested_filename == 'tollbench-passport-recovery.json'
     key = Path(directory) / 'renamed-key.json'  # Renamed files prove validation is content-based, not filename-based.
     download.value.save_as(key)
     f.locator('#confirm-create').click()
@@ -85,7 +85,7 @@ with tempfile.TemporaryDirectory(prefix='passport-unlock-fixture-') as directory
     expect(f.locator('#book-tools')).to_have_attribute('open', '')
     with page.expect_download() as exported:
         f.locator('#recovery').click()
-    assert exported.value.suggested_filename == 'passport-recovery.json'
+    assert exported.value.suggested_filename == 'tollbench-passport-recovery.json'
     with page.expect_download() as exported:
         f.locator('#backup').click()
     assert exported.value.suggested_filename == 'passport-encrypted-backup.json'

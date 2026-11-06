@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0a19
+
+- Prefix downloaded recovery keys with `tollbench-`: `tollbench-passport-recovery.json` for a book and `tollbench-passport-shared-key.json` for an encrypted shared package. The standalone app, full hosted book and mini Passport use the same names.
+- Existing recovery files continue to open their books. This changes download names and help text only; key contents, encryption and recovery format stay the same.
+
 ## 0.1.0a18
 
 - One book. Personal and Business are one encrypted book now; "Business" is a label on an answer or note, not a second place to save. An older Business book moves in once, inside the browser, with a Business label on everything it brings. Its old encrypted copy is left untouched.

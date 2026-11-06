@@ -232,7 +232,7 @@ else {
       }
       const download=button('Download recovery key','gray');download.dataset.recoveryDownload='';
       download.addEventListener('click',()=>{
-        const url=URL.createObjectURL(made.recoveryFile),a=el('a');a.href=url;a.download=made.filename||'passport-recovery.json';
+        const url=URL.createObjectURL(made.recoveryFile),a=el('a');a.href=url;a.download=made.filename||'tollbench-passport-recovery.json';
         document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
       });
       const done=button('Done');done.addEventListener('click',()=>void opened());

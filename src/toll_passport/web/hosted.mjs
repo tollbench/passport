@@ -501,7 +501,7 @@ async function create(value) {
   if (generation !== vaultGeneration) throw Error('conflict');
   envelope = created.envelope; codeState = set.status; backupNotice = true;
   $('create-feedback').textContent = '';
-  download(await exportRecovery(created.key, created.document.vaultId), 'passport-recovery.json');
+  download(await exportRecovery(created.key, created.document.vaultId), 'tollbench-passport-recovery.json');
   recoverySaved = true;
   opened(created, 'Your book is ready. Save the recovery file your browser offered as a backup.');
   $('creation-heading').focus({ preventScroll: true });
@@ -510,7 +510,7 @@ async function create(value) {
 }
 $('retry-recovery').addEventListener('click', () => run(async () => {
   if (!pendingCreation) return recovery();
-  download(await exportRecovery(pendingCreation.key, pendingCreation.document.vaultId), 'passport-recovery.json');
+  download(await exportRecovery(pendingCreation.key, pendingCreation.document.vaultId), 'tollbench-passport-recovery.json');
   status('Recovery download requested. Confirm you saved it before the first hosted write.');
 }));
 $('confirm-create').addEventListener('click', () => run(async () => {
@@ -529,7 +529,7 @@ $('create').addEventListener('click', () => run(async () => {
   if (!loaded || envelope || pendingCreation) throw Error('unavailable');
   clearRestore();
   pendingCreation = await createVault();
-  download(await exportRecovery(pendingCreation.key, pendingCreation.document.vaultId), 'passport-recovery.json');
+  download(await exportRecovery(pendingCreation.key, pendingCreation.document.vaultId), 'tollbench-passport-recovery.json');
   render();
   status('Recovery download requested. Confirm you saved it before the first hosted write.');
   $('creation-heading').focus({ preventScroll: true });
@@ -546,7 +546,7 @@ $('change-code').addEventListener('click', () => {
 });
 $('cancel-code-setup').addEventListener('click', () => { codeSetupOpen = false; setupFirst = null; setupEntry.clear(); render(); });
 async function recovery() {
-  download(await exportRecovery(key, doc.vaultId), 'passport-recovery.json');
+  download(await exportRecovery(key, doc.vaultId), 'tollbench-passport-recovery.json');
   recoverySaved = true;
   render();
   status(
@@ -852,7 +852,7 @@ $('share-form').addEventListener('submit', e => {
     if (generation !== shareGeneration) return;
     preview.append(button('Download encrypted package', () => download(bundle.envelope,
       'passport-shared-package.json')), button('Download separate package key', () =>
-      download(bundle.recovery, 'passport-shared-key.json')));
+      download(bundle.recovery, 'tollbench-passport-shared-key.json')));
   });
 });
 $('receive').addEventListener('change', e => run(async () => {

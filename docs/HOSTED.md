@@ -135,7 +135,7 @@ A missing or failed load never enables creation. If the initial connection fails
 the UI asks the user to reopen the book or refresh the page; a failed storage
 request with a connected host offers Reload saved book.
 
-The returning-book screen explains that `passport-recovery.json` is the original
+The returning-book screen explains that `tollbench-passport-recovery.json` is the original
 key and shows only fixed descriptions of what a book can hold. It exposes no
 private titles, tags, counts or previews. The unlocked library renders real saved
 records, excluding entries owned by registered extension panels. Search performs

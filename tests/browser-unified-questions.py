@@ -367,7 +367,7 @@ console.log(JSON.stringify({envelope:await sealVault(doc,v.key),etag:'v1',recove
         nf.get_by_role('button', name='Set up Passport').click()
         with fresh.expect_download() as download:
             nf.locator('[data-recovery-download]').click()
-        assert download.value.suggested_filename == 'passport-recovery.json'
+        assert download.value.suggested_filename == 'tollbench-passport-recovery.json'
         nf.get_by_role('button', name='Done').click()
         expect(nf.locator('dialog.mini-passport')).to_be_hidden()
         nf.locator('[data-passport-connected]').wait_for(timeout=10000)

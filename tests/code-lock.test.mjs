@@ -71,7 +71,7 @@ test('createBook sets the code; right code unlocks; the code never crosses the b
   const host = fakeHost(), session = createBookSession(host);
   await session.load('personal');
   const made = await session.createBook('123456');
-  assert.equal(made.filename, 'passport-recovery.json');
+  assert.equal(made.filename, 'tollbench-passport-recovery.json');
   const recovery = JSON.parse(await made.recoveryFile.text());
   assert.equal(recovery.format, 'passport-recovery-v1');
   assert.ok(session.getState('personal').document);

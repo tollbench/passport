@@ -234,7 +234,7 @@ async function create() {
   await recovery();
 }
 async function recovery() {
-  download(await exportRecovery(key, doc.vaultId), 'passport-recovery.json');
+  download(await exportRecovery(key, doc.vaultId), 'tollbench-passport-recovery.json');
   recoverySaved = true;
   render();
   status(
@@ -463,7 +463,7 @@ $('share-form').addEventListener('submit', e => {
     if (generation !== shareGeneration) return;
     preview.append(button('Download encrypted package', () => download(bundle.envelope,
       'passport-shared-package.json')), button('Download separate package key', () =>
-      download(bundle.recovery, 'passport-shared-key.json')));
+      download(bundle.recovery, 'tollbench-passport-shared-key.json')));
   });
 });
 $('receive').addEventListener('change', e => run(async () => {

@@ -83,7 +83,7 @@ with tempfile.TemporaryDirectory(prefix='passport-code-') as tmp, \
     with page.expect_download() as download:
         type_code(f, 'create-code', '482913')
     recovery = Path(tmp) / 'recovery.json'; download.value.save_as(recovery)
-    assert download.value.suggested_filename == 'passport-recovery.json'
+    assert download.value.suggested_filename == 'tollbench-passport-recovery.json'
     expect(f.locator('#book')).to_be_visible()
     expect(f.locator('#creation')).to_be_visible()
     assert '482913' not in str(page.evaluate('JSON.stringify(receipts)'))

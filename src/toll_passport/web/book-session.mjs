@@ -143,7 +143,7 @@ export function createBookSession(host, device = null, onChange = () => {}) {
     await mergeFromDevice().catch(() => false);
     const recovery = await exportRecovery(created.key, created.document.vaultId);
     return {recoveryFile: new Blob([JSON.stringify(recovery, null, 2)], {type: 'application/json'}),
-      filename: 'passport-recovery.json'};
+      filename: 'tollbench-passport-recovery.json'};
   }
   async function setCode(value) {
     if (!b.key || !b.document) return {ok: false, reason: 'locked'};
